@@ -1,0 +1,17 @@
+# Use a slim Python base image
+FROM python:3.9-slim-buster
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the requirements file and install Python dependencies
+COPY requirements.txt .
+# Install ffmpeg and then your Python dependencies
+RUN apt-get update && apt-get install -y ffmpeg
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of your application code
+COPY . .
+
+# Command to run your Streamlit app
+CMD ["streamlit", "run", "app.py"]
