@@ -28,38 +28,33 @@ st.set_page_config(
 
 def extract_text_with_gemini(video_file_path):
     """
-    Attempts to extract textual information and a content summary from a video
-    using the Gemini Pro Vision model.
+    Extracts comprehensive visual content and on-screen text from a video
+    using the Gemini Pro Vision model. This function aims for a "transcription-like"
+    output based purely on visual observation.
 
     Important Note on Transcription:
-    The current Gemini Pro Vision model primarily processes video frames for visual
-    understanding and does not perform direct, robust, language-agnostic audio
-    speech-to-text transcription.
-
-    This function will analyze the video's visual content and context to generate
-    a descriptive summary. For actual spoken word transcripts, a dedicated
-    Automatic Speech Recognition (ASR) service (which is separate from the
-    current Gemini API's primary video capabilities) would typically be required.
+    This model excels at understanding visual content and reading on-screen text.
+    It **does NOT perform direct audio-to-text transcription**. The output will be
+    a detailed descriptive summary of the video's visual elements and any text
+    appearing in frames, structured to resemble a continuous narrative or report.
+    For true spoken word transcription, a dedicated ASR service is required.
     """
-    st.info("Initiating video analysis with Gemini Pro Vision. "
-            "Please note: This model excels at understanding visual content. "
-            "While it can infer context and potentially on-screen text, it does NOT "
-            "perform direct audio-to-text transcription. The output will be a descriptive summary "
-            "of the video's visual content based on frames.")
+    st.info("Initiating video analysis with Gemini Pro Vision for visual content extraction. "
+            "Please note: This process focuses on what is *visually observable* in the video, "
+            "including any on-screen text, and infers narrative from visual cues. "
+            "It does NOT perform audio-to-text transcription.")
 
     uploaded_file_name = None
     try:
-        # Step 1: Upload the video file to Gemini's backend for processing
         with st.spinner("Uploading video to Gemini API..."):
             video_file = genai.upload_file(video_file_path)
             uploaded_file_name = video_file.name
 
-        # Step 2: Wait for the file to be processed by Gemini.
         processing_bar = st.progress(0, text="Processing video with Gemini API...")
         progress_percentage = 0
         while video_file.state.name == "PROCESSING":
-            time.sleep(2) # Wait for 2 seconds before checking the status again
-            video_file = genai.get_file(uploaded_file_name) # Refresh the file status
+            time.sleep(2)
+            video_file = genai.get_file(uploaded_file_name)
             progress_percentage = min(progress_percentage + 5, 99)
             processing_bar.progress(progress_percentage)
 
@@ -67,19 +62,22 @@ def extract_text_with_gemini(video_file_path):
             st.error("Failed to process video with Gemini API. Please try again or with a different video.")
             return "Error: Video processing failed."
 
-        # Step 3: Define a detailed prompt for Gemini to describe the video content
+        # --- Refined Prompt for Direct Content Extraction ---
         prompt = (
-            "Please provide a comprehensive description of the content within this video. "
-            "Focus on the main subjects, actions, settings, and any prominent text displayed. "
-            "If there are clear visual cues suggesting spoken content or narrative, please infer "
-            "and describe the general theme or topics being discussed based on visuals. "
-            "Structure your response as several well-formatted paragraphs, suitable for a report or summary. "
-            "The output should be language-agnostic in its descriptive nature, focusing on what is visually observable."
+            "You are a highly precise content extraction AI. Your task is to provide a comprehensive, "
+            "detailed, and professional transcription-like output of the visual content within this video. "
+            "Focus strictly on what is observable in the frames. "
+            "Capture and transcribe **all discernible on-screen text** (e.g., titles, captions, signs, presentations) verbatim. "
+            "Describe all significant actions, subjects, settings, and visual elements. "
+            "If there are clear visual cues indicating people speaking or a dialogue, describe who is speaking (if identifiable) "
+            "and what the visual context of their speech is, but **do not attempt to transcribe spoken words from audio**. "
+            "Infer and describe the progression of events and any narrative visually conveyed. "
+            "Present the extracted content in clean, well-formatted paragraphs, ordering events chronologically as they appear in the video. "
+            "Aim for maximum detail and fidelity to the visual information."
         )
         
-            
-        # Step 4: Generate content from the Gemini Pro Vision model
-        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+        # Using gemini-pro-vision, as it's the multimodal model for video input
+        model = genai.GenerativeModel('gemini-pro-vision')
         response = model.generate_content([prompt, video_file], stream=False)
         
         if response and hasattr(response, 'text'):
@@ -106,28 +104,30 @@ with st.sidebar:
     st.header("How to Use")
     st.info("""
     1.  **Upload your video file** using the "Upload a video file" button on the main page.
-        (There is no client-side duration limit here; Gemini API may have its own limits.)
+        (Gemini API has its own internal limits for video size/duration, typically up to 2 minutes for direct file uploads.)
     2.  Once uploaded, click the **"Generate Content Summary"** button.
-    3.  The app will then use the Google Gemini API to analyze your video's visual content.
-    4.  The extracted descriptive text will be displayed in the main area. You can then
-        copy it directly or download it as a Microsoft Word (.docx) document.
+    3.  The app will then use the Google Gemini API to analyze your video's **visual content**.
+    4.  The extracted descriptive text (visual "transcription") will be displayed in the main area.
+        You can then copy it directly or download it as a Microsoft Word (.docx) document.
     """)
 
     st.header("About This App")
     st.markdown("""
-    This application is designed to help you gain textual insights from your video content.
-    It leverages the powerful **Google Gemini Pro Vision model** to analyze video frames
-    and provide a comprehensive descriptive summary of the visual information.
+    This application helps you get detailed textual insights from your video content by leveraging the
+    **Google Gemini Pro Vision model**. It analyzes video frames to provide a comprehensive and
+    structured summary of **all visually observable information**, including on-screen text,
+    actions, and visual narratives.
 
     ---
 
-    **Important Disclaimer on Audio Transcription:**
-    While the app's purpose is to "extract text from video," it is crucial to understand
-    that the Gemini Pro Vision model, as used here, primarily focuses on **visual content analysis**.
-    It **does not perform direct audio-to-text transcription**. For accurate spoken word transcripts
-    from audio tracks, a dedicated Automatic Speech Recognition (ASR) service would be required.
-    This current implementation provides a descriptive summary of the video's visual elements,
-    which can serve as a form of "extracted text" based on its visual narrative.
+    **CRITICAL CLARIFICATION: Visual vs. Audio Transcription**
+
+    It is paramount to understand that this app, using `gemini-pro-vision`, performs **visual content extraction and on-screen text transcription only.**
+
+    * **✅ What it DOES:** Provides a highly detailed description of everything visible in the video frames. It will capture and output any text that appears on screen (like captions, titles, or presentation slides). It will describe visual cues that might suggest dialogue (e.g., "Person A is seen speaking to Person B").
+    * **❌ What it DOES NOT do:** It **does NOT "listen" to the audio track** of your video. Therefore, it cannot transcribe spoken words, distinguish between multiple speakers based on their voices, or generate a verbatim transcript of a conversation. For that, a dedicated **Automatic Speech Recognition (ASR)** service is required, which is a different technology.
+
+    The output you receive will be a "visual transcription" – a detailed, paragraph-ordered report of the video's visual content.
     """)
 
     st.header("Future Options & Features (Placeholder)")
@@ -135,26 +135,25 @@ with st.sidebar:
     * **True Audio Transcription:** Integration with a dedicated ASR service for spoken words.
     * **Smart Summarization:** Advanced AI-driven summarization and keyword extraction from content.
     * **Content Translation:** Ability to translate extracted content into various languages.
-    * **Speaker Identification:** Diarization to identify different speakers in the video.
+    * **Speaker Identification:** Diarization to identify different speakers in the video (for audio-based content).
     * **Timestamped Events:** Generate summaries or transcripts with precise timestamps.
     * **More Input Formats:** Support for video URLs (e.g., YouTube links) in addition to file uploads.
     """)
 
-st.title("🎥 Professional Video Content Extractor & Summarizer")
-st.write("Upload your video to get a comprehensive textual summary of its visual content. "
-         "This app leverages the advanced capabilities of the Google Gemini API to analyze your video "
-         "and present insights in a clean, copyable, and downloadable format.")
+st.title("🎥 Professional Video Visual Content Extractor & Transcriber")
+st.write("Upload your video to get a comprehensive, detailed textual 'transcription' of its visual content. "
+         "This app leverages the advanced visual analysis capabilities of the Google Gemini API to extract "
+         "all observable information and present it in a clean, copyable, and downloadable format.")
 
 uploaded_file = st.file_uploader(
     "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
     type=["mp4", "mov", "mkv", "avi", "webm"],
-    help="Gemini API has its own internal limits for video size/duration. Please refer to Gemini API documentation for details."
+    help="Gemini API for video processing typically supports videos up to ~2 minutes. Larger files may fail or take longer."
 )
 
 transcript_display_area = st.empty()
 
 if uploaded_file is not None:
-    # Save the uploaded video to a temporary file on the server's disk
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
         tmp_file.write(uploaded_file.getvalue())
         video_path = tmp_file.name
@@ -162,16 +161,16 @@ if uploaded_file is not None:
     st.video(video_path)
 
     if st.button("Generate Content Summary", type="primary", use_container_width=True):
-        with st.spinner("Analyzing video content with Gemini API... This may take a moment based on video length and complexity."):
+        with st.spinner("Analyzing video visual content with Gemini API... This may take a moment based on video length and complexity."):
             extracted_text = extract_text_with_gemini(video_path)
 
         with transcript_display_area.container():
             st.markdown("---")
-            st.subheader("Extracted Content Summary")
+            st.subheader("Extracted Visual Content (Visual 'Transcription')")
             st.markdown(extracted_text)
 
             st.text_area(
-                "Copyable Summary",
+                "Copyable Visual Content Summary",
                 value=extracted_text,
                 height=300,
                 key="copy_summary_area",
@@ -179,9 +178,12 @@ if uploaded_file is not None:
             )
 
             doc = Document()
-            doc.add_heading('Video Content Summary', level=1)
+            doc.add_heading('Video Visual Content Summary', level=1)
+            # Split by double newline to preserve paragraphs from Gemini's output
             for paragraph_text in extracted_text.split('\n\n'):
-                doc.add_paragraph(paragraph_text)
+                # Add text to the document, ensuring empty paragraphs are skipped
+                if paragraph_text.strip():
+                    doc.add_paragraph(paragraph_text.strip())
 
             bio = io.BytesIO()
             doc.save(bio)
@@ -190,12 +192,11 @@ if uploaded_file is not None:
             st.download_button(
                 label="Download as Word (DOCX)",
                 data=bio.getvalue(),
-                file_name="video_content_summary.docx",
+                file_name="video_visual_content_summary.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                help="Download the extracted content summary as a Microsoft Word document for offline use."
+                help="Download the extracted visual content summary as a Microsoft Word document for offline use."
             )
     
-    # Ensure the temporary video file is deleted from the local disk
     if os.path.exists(video_path):
         os.unlink(video_path)
 
