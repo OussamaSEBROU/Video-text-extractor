@@ -6,6 +6,10 @@ import os
 import tempfile
 import time # For polling Gemini file status
 
+# REMOVE: from pydub import AudioSegment
+# ADD: ffmpeg-python import
+import ffmpeg # This is the new module for audio extraction
+
 # Import pydub for audio extraction
 from pydub import AudioSegment
 # pydub requires ffmpeg or libav to be installed on the system.
@@ -35,8 +39,8 @@ try:
     model = genai.GenerativeModel('gemini-2.0-flash')
 
 except KeyError:
-    st.error("Gemini API key not found. Please set `GEMINI_API_KEY` in your environment variables (for Render) or in `.streamlit/secrets.toml` (for local development).")
-    st.stop() # Stop the app if API key is not available
+    st.error("Gemini API key not found. Please set `GOOGLE_API_KEY` in your environment variables (for Render) or in `.streamlit/secrets.toml` (for local development).")
+    st.stop()
 except Exception as e:
     st.error(f"Error configuring Gemini API: {e}")
     st.stop()
@@ -45,27 +49,33 @@ except Exception as e:
 
 def extract_audio_from_video(video_path):
     """
-    Extracts audio from a video file using pydub and saves it temporarily as MP3.
-    Requires ffmpeg to be installed on the system.
+    Extracts audio from a video file using ffmpeg-python and saves it temporarily as MP3.
+    Requires ffmpeg to be installed on the system (handled by Dockerfile).
     """
     try:
         # Create a temporary file path for the audio output
-        # Using tempfile.NamedTemporaryFile for robust temporary file creation
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
             temp_audio_path = temp_audio_file.name
         
         st.info(f"Loading video: {video_path}")
-        # Load the video file. pydub will automatically use ffmpeg.
-        audio = AudioSegment.from_file(video_path)
         
-        st.info(f"Exporting audio to: {temp_audio_path}")
-        # Export the audio to MP3 format
-        audio.export(temp_audio_path, format="mp3")
+        # Use ffmpeg-python to extract audio.
+        # input(video_path) creates an ffmpeg input stream from your video file.
+        # output(temp_audio_path, acodec='libmp3lame') configures the output to an MP3 file
+        # with the 'libmp3lame' audio codec.
+        # .run() executes the ffmpeg command.
+        # overwrite_output=True is good for temporary files to ensure they can be overwritten.
+        # capture_stderr=True helps in debugging if ffmpeg throws an error.
+        ffmpeg.input(video_path).output(temp_audio_path, acodec='libmp3lame').run(overwrite_output=True, capture_stderr=True)
         
         return temp_audio_path
+    except ffmpeg.Error as e:
+        # Catch specific ffmpeg errors to provide more context
+        st.error(f"Error extracting audio with ffmpeg-python. Check ffmpeg logs: {e.stderr.decode()}")
+        st.info("Ensure ffmpeg is installed and accessible in the environment.")
+        return None
     except Exception as e:
-        st.error(f"Error extracting audio from video: {e}")
-        st.warning("Ensure that 'ffmpeg' is correctly installed and accessible in the environment.")
+        st.error(f"An unexpected error occurred during audio extraction: {e}")
         return None
 
 def transcribe_audio_with_gemini(audio_path):
@@ -74,29 +84,24 @@ def transcribe_audio_with_gemini(audio_path):
     Uploads the file, polls for processing status, and then transcribes.
     """
     try:
-        # Upload the audio file to Gemini's temporary storage for processing
         st.info("Uploading audio for transcription to Google Gemini...")
         audio_file = genai.upload_file(path=audio_path)
         
-        # Poll for file processing status
         with st.spinner(f"Processing audio file '{audio_file.display_name}' with Gemini... This might take a moment."):
             while audio_file.state.name == "PROCESSING":
-                time.sleep(2) # Wait for 2 seconds before polling again
-                audio_file = genai.get_file(audio_file.name) # Refresh file status
+                time.sleep(2)
+                audio_file = genai.get_file(audio_file.name)
 
         if audio_file.state.name == "FAILED":
             st.error(f"Audio file processing failed on Gemini's side for: {audio_file.display_name}. Please try again or check the file format.")
-            genai.delete_file(audio_file.name) # Clean up failed upload
+            genai.delete_file(audio_file.name)
             return None
 
-        # Start transcription
         st.info("Transcribing audio content... This can take longer for larger files.")
         response = model.generate_content(["Transcribe the following audio, providing only the spoken text:", audio_file])
         
-        # Clean up: Delete the uploaded file from Gemini's storage to free up space and manage quota
         genai.delete_file(audio_file.name)
         
-        # Accessing text content might need to check if response.text exists
         return response.text if response.text else "No transcription found."
     except genai.types.BlockedPromptException as e:
         st.error(f"Transcription blocked: {e.response.prompt_feedback.block_reason_message}. Please adjust content or retry.")
@@ -104,7 +109,6 @@ def transcribe_audio_with_gemini(audio_path):
     except Exception as e:
         st.error(f"An error occurred during Gemini transcription: {e}")
         st.warning("Please ensure your video is not excessively long, as there are API usage limits.")
-        # Attempt to delete the file if an error occurred after upload but before deletion
         try:
             if 'audio_file' in locals() and audio_file.name:
                 genai.delete_file(audio_file.name)
@@ -117,10 +121,9 @@ def create_word_document(text):
     document = Document()
     document.add_paragraph(text)
     
-    # Save document to a BytesIO object (in-memory file)
     bio = BytesIO()
     document.save(bio)
-    bio.seek(0) # Rewind to the beginning of the BytesIO object
+    bio.seek(0)
     return bio
 
 # --- Streamlit UI Layout ---
@@ -167,8 +170,8 @@ with st.sidebar:
     )
     
     st.header("Developed By")
-    st.markdown("Your Name/Company Name") # Customize this!
-    st.markdown("[Your Website/GitHub/LinkedIn Link (Optional)]") # Customize this!
+    st.markdown("Your Name/Company Name")
+    st.markdown("[Your Website/GitHub/LinkedIn Link (Optional)]")
     st.markdown("---")
     st.info("Powered by Google Gemini & Streamlit.")
 
@@ -181,8 +184,8 @@ a comprehensive text transcription of the spoken content.
 
 uploaded_file = st.file_uploader(
     "Upload a video file to transcribe",
-    type=["mp4", "mov", "avi", "mkv"], # Common video formats
-    accept_multiple_files=False, # Only allow one video at a time
+    type=["mp4", "mov", "avi", "mkv"],
+    accept_multiple_files=False,
     help="Select a video file (MP4, MOV, AVI, MKV). File size limits may apply based on deployment platform."
 )
 
@@ -190,30 +193,23 @@ transcribed_text = ""
 video_path = None # Initialize to None
 
 if uploaded_file is not None:
-    # Display the uploaded video
     st.subheader("Uploaded Video Preview:")
     st.video(uploaded_file, format="video/mp4", start_time=0)
     
-    # Save the uploaded file temporarily to a known path
-    # This is crucial because pydub (and moviepy) needs a physical file path.
     st.info("Saving video to a temporary location...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_video_file:
         tmp_video_file.write(uploaded_file.read())
         video_path = tmp_video_file.name
     st.success(f"Video '{uploaded_file.name}' uploaded successfully and ready for processing!")
 
-    # Transcription Button
     if st.button("Transcribe Video", help="Click to start the transcription process."):
         if video_path:
-            # Step 1: Extract audio
             with st.spinner("Step 1/2: Extracting audio from video..."):
                 audio_file_path = extract_audio_from_video(video_path)
 
             if audio_file_path:
-                # Step 2: Transcribe audio
                 transcribed_text = transcribe_audio_with_gemini(audio_file_path)
                 
-                # Clean up temporary audio file immediately after use
                 try:
                     os.remove(audio_file_path)
                     st.success("Temporary audio file cleaned up.")
@@ -224,8 +220,6 @@ if uploaded_file is not None:
         else:
             st.error("No video file found to transcribe. Please upload a video first.")
     
-    # Always clean up the temporary video file once processing is done (or fails)
-    # This ensures storage isn't filled on the server.
     if video_path and os.path.exists(video_path):
         try:
             os.remove(video_path)
@@ -233,20 +227,17 @@ if uploaded_file is not None:
         except OSError as e:
             st.warning(f"Could not remove temporary video file: {e}")
 
-# Display transcribed text and download options
 if transcribed_text:
     st.subheader("🎉 Extracted Text (Transcription):")
     st.text_area(
         "Transcription Output",
         transcribed_text,
-        height=400, # Increased height for better readability
+        height=400,
         help="This is the automatically transcribed text from your video's audio. You can select and copy it."
     )
     
-    # Columns for Download button and copy instruction
-    col1, col2 = st.columns([0.25, 0.75]) # Adjust column width for better alignment
+    col1, col2 = st.columns([0.25, 0.75])
     
-    # Download button for Word file
     word_doc_bytes = create_word_document(transcribed_text)
     with col1:
         st.download_button(
@@ -257,10 +248,8 @@ if transcribed_text:
             help="Download the transcribed text as a Microsoft Word document."
         )
 
-    # Note about copy functionality: Streamlit doesn't have a direct "copy to clipboard" button
-    # without custom JavaScript (which is outside the scope of a single app.py).
     with col2:
         st.info("To copy the text, simply highlight it in the 'Transcription Output' box and press Ctrl+C (Cmd+C).")
 
-elif uploaded_file is None: # Only show this message if no file is uploaded yet
+elif uploaded_file is None:
     st.info("Upload your video file above and click 'Transcribe Video' to begin the process.")
