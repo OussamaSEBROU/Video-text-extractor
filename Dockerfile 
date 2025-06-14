@@ -4,7 +4,7 @@ FROM python:3.9-slim-buster
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies required by pydub (ffmpeg)
+# Install system dependencies required by ffmpeg (the underlying tool for ffmpeg-python)
 # and other build-essential tools if needed
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -25,7 +25,4 @@ COPY app.py .
 EXPOSE 8501
 
 # Command to run the Streamlit application
-# --server.port sets the port for Streamlit
-# --server.enableCORS false and --server.enableXsrfProtection false are often needed for deployments
-# behind proxies like Render to avoid connection issues.
 ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
