@@ -77,8 +77,9 @@ def extract_text_with_gemini(video_file_path):
             "The output should be language-agnostic in its descriptive nature, focusing on what is visually observable."
         )
         
+            
         # Step 4: Generate content from the Gemini Pro Vision model
-        model = genai.GenerativeModel('gemini-pro-vision')
+        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
         response = model.generate_content([prompt, video_file], stream=False)
         
         if response and hasattr(response, 'text'):
