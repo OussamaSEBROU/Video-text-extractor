@@ -1,12 +1,15 @@
 import streamlit as st
 import google.generativeai as genai
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 from docx import Document
 from io import BytesIO
 import os
+import re
+from urllib.parse import urlparse, parse_qs
 
 # --- Configuration ---
 # Set Streamlit page configuration for a wider layout
-st.set_page_config(layout="wide", page_title="Transcript Refiner & Formatter", page_icon="📝")
+st.set_page_config(layout="wide", page_title="Video Transcript Processor", page_icon="🎥")
 
 # Get Gemini API key from environment variables (for Render.com deployment)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -19,29 +22,94 @@ else:
 
 # --- Helper Functions ---
 
+def get_youtube_video_id(url):
+    """
+    Extracts the YouTube video ID from a given URL.
+    Supports various YouTube URL formats.
+    """
+    if "youtube.com/watch" in url:
+        query = urlparse(url).query
+        params = parse_qs(query)
+        return params.get("v", [None])[0]
+    elif "youtu.be/" in url:
+        return url.split("youtu.be/")[1].split("?")[0]
+    return None
+
+def get_youtube_transcript_text(video_id):
+    """
+    Fetches the transcript for a given YouTube video ID.
+    Attempts to get any available transcript (language-agnostic).
+    """
+    if not video_id:
+        st.error("No YouTube video ID provided.")
+        return None
+
+    try:
+        # Get all available transcripts
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # Prioritize manually created transcripts, then generated ones
+        # Fallback to the first available transcript if specific preference is not met
+        transcript_data = None
+        for t in transcript_list:
+            if not t.is_generated: # Prefer manually created
+                transcript_data = t.fetch()
+                break
+        if transcript_data is None: # If no manual, try generated
+            for t in transcript_list:
+                if t.is_generated:
+                    transcript_data = t.fetch()
+                    break
+        if transcript_data is None and transcript_list: # Fallback to any if none above
+            transcript_data = transcript_list[0].fetch()
+
+        if transcript_data:
+            full_transcript = " ".join([entry['text'] for entry in transcript_data])
+            return full_transcript
+        else:
+            return None # No transcript found
+
+    except NoTranscriptFound:
+        st.warning(f"No transcript found for video ID: {video_id}. It might not have one or it's unavailable.")
+        return None
+    except TranscriptsDisabled:
+        st.warning(f"Transcripts are disabled for video ID: {video_id}.")
+        return None
+    except Exception as e:
+        # Catch generic exceptions including potential IP blocks from YouTube
+        st.error(f"An unexpected error occurred while fetching transcript: {e}")
+        st.warning(
+            "**Important:** If you see 'YouTube is blocking requests from your IP', "
+            "this is a common issue when running on cloud servers (like Render.com). "
+            "YouTube often blocks automated access from data center IP ranges. "
+            "For reliable YouTube transcription, consider running this app locally or "
+            "using a dedicated proxy service (not built into this app)."
+        )
+        return None
+
 def process_text_with_gemini(text_input, api_key):
     """
     Uses the Gemini API to reformat and clean the provided text.
     It structures the text into well-formatted paragraphs.
     """
     if not api_key:
-        return "Error: Gemini API key is not configured."
-
+        st.error("Gemini API key is not configured. Cannot process text.")
+        return "Error: Gemini API key missing."
     if not text_input or text_input.strip() == "":
-        return "Please provide some text to process."
+        return "Error: No text provided for Gemini processing."
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         
         # Craft a specific prompt for reformatting and cleaning
         prompt = (
-            "The following text is a raw transcript or unformatted text. "
+            "The following text is a video transcript. "
             "Please reformat it into clean, well-structured paragraphs, "
             "correcting any obvious grammatical errors or awkward phrasing. "
             "Ensure the output is easy to read and logically coherent. "
             "Maintain the original meaning and content. Do not add any introductory or concluding remarks, "
             "just the reformatted text. If the text is very short or already clean, return it as is."
-            f"\n\nText to reformat:\n{text_input}"
+            f"\n\nTranscript:\n{text_input}"
         )
         
         response = model.generate_content(prompt)
@@ -51,8 +119,8 @@ def process_text_with_gemini(text_input, api_key):
         else:
             return "No refined text could be generated by Gemini."
     except Exception as e:
-        st.error(f"Error communicating with Gemini API: {e}")
-        return f"Error: Could not process text with Gemini. Details: {e}"
+        st.error(f"Error communicating with Gemini API for text processing: {e}")
+        return "Error: Could not process text with Gemini."
 
 def create_word_document(text_content):
     """
@@ -72,83 +140,99 @@ def create_word_document(text_content):
 with st.sidebar:
     st.header("How to Use 🚀")
     st.markdown("""
-    1.  **Paste Your Transcript/Text**: Copy and paste any raw text or transcript into the text area on the main page.
-    2.  **Refine**: Click the "Process Text" button. The app will send your text to the Gemini API to reformat it into clean, well-structured paragraphs.
-    3.  **Review & Download**: The processed text will appear in the main area. You can easily copy it or download it as a Word document.
+    1.  **Paste a YouTube Video URL**: Copy and paste the URL of a YouTube video into the text box on the main page.
+    2.  **Process Video**: Click the "Process Video" button. The app will attempt to fetch the transcript and then use the Gemini API to reformat it.
+    3.  **Review & Download**: The processed transcript will appear in the main area. You can copy it or download it as a Word document.
 
-    **Important Note on Video Transcription**:
-    This app focuses on refining *existing text* using the Gemini API.
-    * **Direct video transcription from YouTube URLs or uploaded files is not supported by this app.** This is due to YouTube's IP blocking policies on cloud servers (like Render.com) for external scraping tools, and the fact that the Gemini API primarily processes text and images, not raw video files for transcription.
-    * If you need a transcript from a YouTube video, you would typically use a browser extension, a dedicated website, or run the `youtube_transcript_api` script *locally* on your machine to get the raw text, and then paste that text into this app for refinement.
+    ---
+    ### **Important Notes on Video Transcription:**
+    * **YouTube IP Blocking**: When hosted on cloud services like Render.com, YouTube often blocks automated requests. You might frequently encounter errors like "YouTube is blocking requests from your IP." **This is a limitation from YouTube, not a bug in the app.** For reliable YouTube transcription, consider running this app locally on your personal machine.
+    * **Uploaded Video Transcription (Not Supported by Gemini Directly)**: The Gemini API (text models) does not directly transcribe audio from video files. This app cannot process uploaded video files to extract text. A dedicated audio-to-text transcription service would be required for that functionality.
     """)
 
     st.markdown("---")
     st.header("About Us 💡")
     st.markdown("""
-    This application is designed to help you quickly refine and format any raw text or transcript into clean, readable paragraphs. It leverages the powerful text processing capabilities of the Gemini API.
+    This application attempts to extract and refine transcripts from YouTube videos. It uses `youtube_transcript_api` for transcript fetching and the Gemini API for advanced text processing and formatting. Due to external factors (like YouTube's IP blocking policies), reliable transcription from cloud-hosted environments can be challenging.
     """)
 
     st.markdown("---")
     st.header("Future Features (Placeholder) 🔮")
     st.markdown("""
-    * Summarization options for processed text.
+    * Summarization options for transcripts.
     * Keyword extraction.
     * Multi-language translation.
-    * More advanced formatting options.
+    * Integration with dedicated audio transcription services (requires additional API keys/services).
     """)
 
 # Main Content Area
-st.title("📝 Text & Transcript Refiner powered by Gemini")
+st.title("🎥 Video Transcript Processor & Refiner")
 
 st.markdown("""
-Welcome to the Text & Transcript Refiner! This tool helps you quickly get clean, well-formatted paragraphs from any raw text or transcript you provide. Just paste your text below, and let our app use the Gemini API to do the rest.
+Welcome to the Video Transcript Processor! This tool aims to help you get a clean, well-formatted transcript from YouTube videos. Just paste the video URL, and our app will attempt to fetch the transcript and use the Gemini API to refine it.
 """)
+
+st.markdown(
+    """
+    <div style="background-color: #ffe0b2; padding: 15px; border-radius: 8px; border: 1px solid #ff9800; color: #e65100;">
+        <strong>⚠️ Important Warning for Cloud Deployments (like Render.com):</strong>
+        <br>
+        Due to YouTube's aggressive IP blocking of requests originating from cloud data centers, you may frequently encounter errors when trying to process YouTube video URLs from this hosted app. For more reliable YouTube transcription, consider running this application directly on your local machine.
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 
 st.markdown("---")
 
 # Input Section
-st.subheader("Input Your Raw Text or Transcript")
-raw_text_input = st.text_area(
-    "Paste your text here:",
-    placeholder="e.g., this is a very long sentence that needs breaking up. it also has some grammatical errors that should be fixed. and maybe no proper punctuation. making it hard to read.",
-    height=300
-)
+st.subheader("Input Video")
+video_url = st.text_input("Enter YouTube Video URL:", placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
 # Placeholder for file upload with explanation
 st.file_uploader(
-    "Upload a Video File (Direct Transcription Not Supported)", 
+    "Upload a Video File (Direct Transcription Not Supported by Gemini)", 
     type=["mp4", "mov", "avi", "mkv"], 
     disabled=True, 
-    help="Direct video transcription via Gemini API for large files is not possible with this setup. Please use text input instead."
+    help="The Gemini API (text models) does not directly transcribe audio from video files. A dedicated audio transcription service would be needed for this feature, which is beyond this app's current scope."
 )
+
 
 processed_transcript = None
 
-if st.button("Process Text"):
+if st.button("Process Video"):
     if not GEMINI_API_KEY:
-        st.error("Cannot process text: Gemini API key is not set. Please configure it in your environment variables.")
-    elif not raw_text_input or raw_text_input.strip() == "":
-        st.warning("Please paste some text into the input box to process.")
+        st.error("Cannot process video: Gemini API key is not set. Please configure it in your environment variables.")
+    elif video_url:
+        with st.spinner("Attempting to fetch and process transcript... This might take a moment. (Watch out for YouTube IP blocking errors!)"):
+            video_id = get_youtube_video_id(video_url)
+            if video_id:
+                raw_transcript = get_youtube_transcript_text(video_id)
+                if raw_transcript:
+                    processed_transcript = process_text_with_gemini(raw_transcript, GEMINI_API_KEY)
+                    if "Error" in processed_transcript: # Check for specific error message
+                        st.error(f"Failed to process transcript with Gemini API: {processed_transcript}. Please try again.")
+                        processed_transcript = None # Clear transcript on error
+                else:
+                    st.info("No raw transcript found or retrieved for the provided YouTube URL, or an error occurred during fetching. See above for details.")
+            else:
+                st.error("Invalid YouTube URL. Please enter a valid URL.")
     else:
-        with st.spinner("Processing text with Gemini... This might take a moment."):
-            processed_transcript = process_text_with_gemini(raw_text_input, GEMINI_API_KEY)
-            if "Error" in processed_transcript: # Check for specific error message
-                st.error(f"Failed to process text: {processed_transcript}")
-                processed_transcript = None # Clear transcript on error
+        st.warning("Please enter a YouTube video URL.")
 
 st.markdown("---")
 
 # Output Section
-st.subheader("Refined Text")
+st.subheader("Extracted & Refined Transcript")
 
 if processed_transcript:
     # Display the processed transcript in a text area for easy viewing and copying
     st.text_area(
-        "Refined Text (copy directly from here):",
+        "Transcript (copy directly from here):",
         value=processed_transcript,
         height=400,
-        key="refined_output",
-        help="The cleaned and reformatted text from your input."
+        key="transcript_output",
+        help="The cleaned and reformatted transcript from the video."
     )
 
     col1, col2 = st.columns([0.15, 0.85]) # Adjust column width for button alignment
@@ -163,11 +247,11 @@ if processed_transcript:
         st.download_button(
             label="Download as Word (.docx)",
             data=word_doc_buffer,
-            file_name="refined_text.docx",
+            file_name="video_transcript.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            help="Download the refined text as a Microsoft Word document."
+            help="Download the full transcript as a Microsoft Word document."
         )
 else:
-    st.info("Paste your raw text or transcript above and click 'Process Text' to see the refined output here.")
+    st.info("Enter a YouTube video URL and click 'Process Video' to see the transcript here.")
 
 
