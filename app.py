@@ -1,202 +1,266 @@
-# app.py
 import streamlit as st
+import google.generativeai as genai
+from docx import Document
+from io import BytesIO
 import os
 import tempfile
-from pathlib import Path
-import io
-from docx import Document
-import google.generativeai as genai
-import time # For time.sleep during Gemini file processing
+import time # For polling Gemini file status
 
-# --- Configuration ---
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Import pydub for audio extraction
+from pydub import AudioSegment
+# pydub requires ffmpeg or libav to be installed on the system.
+# We'll handle this in the Dockerfile.
 
-if not GEMINI_API_KEY:
-    st.error("Gemini API Key not found. Please set the 'GEMINI_API_KEY' environment variable. "
-             "If deploying on Render.com, add it under 'Environment Variables'.")
-    st.stop()
-
-genai.configure(api_key=GEMINI_API_KEY)
-
+# --- Streamlit Page Configuration ---
 st.set_page_config(
-    page_title="Video Content Extractor",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title="AI Video Transcriber",
+    page_icon="🎥",
+    layout="wide", # Use a wide layout for better content display
+    initial_sidebar_state="expanded"
 )
 
-# --- Helper Function for Gemini Video Processing ---
+# --- Gemini API Key Configuration ---
+# This attempts to get the API key from environment variables (for Render)
+# or Streamlit secrets (for local development).
+try:
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_api_key:
+        gemini_api_key = st.secrets["GEMINI_API_KEY"]
+    
+    genai.configure(api_key=gemini_api_key)
+    
+    # Initialize the Gemini model for audio processing
+    # gemini-1.5-flash-latest is generally good for speed and cost.
+    # For very long or complex audio, consider gemini-1.5-pro-latest if your quota allows.
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
-def extract_text_with_gemini(video_file_path):
+except KeyError:
+    st.error("Gemini API key not found. Please set `GEMINI_API_KEY` in your environment variables (for Render) or in `.streamlit/secrets.toml` (for local development).")
+    st.stop() # Stop the app if API key is not available
+except Exception as e:
+    st.error(f"Error configuring Gemini API: {e}")
+    st.stop()
+
+# --- Helper Functions ---
+
+def extract_audio_from_video(video_path):
     """
-    Extracts comprehensive visual content and on-screen text from a video
-    using the Gemini Pro Vision model. This function aims for a "transcription-like"
-    output based purely on visual observation.
-
-    Important Note on Transcription:
-    This model excels at understanding visual content and reading on-screen text.
-    It **does NOT perform direct audio-to-text transcription**. The output will be
-    a detailed descriptive summary of the video's visual elements and any text
-    appearing in frames, structured to resemble a continuous narrative or report.
-    For true spoken word transcription, a dedicated ASR service is required.
+    Extracts audio from a video file using pydub and saves it temporarily as MP3.
+    Requires ffmpeg to be installed on the system.
     """
-    st.info("Initiating video analysis with Gemini Pro Vision for visual content extraction. "
-            "Please note: This process focuses on what is *visually observable* in the video, "
-            "including any on-screen text, and infers narrative from visual cues. "
-            "It does NOT perform audio-to-text transcription.")
-
-    uploaded_file_name = None
     try:
-        with st.spinner("Uploading video to Gemini API..."):
-            video_file = genai.upload_file(video_file_path)
-            uploaded_file_name = video_file.name
-
-        processing_bar = st.progress(0, text="Processing video with Gemini API...")
-        progress_percentage = 0
-        while video_file.state.name == "PROCESSING":
-            time.sleep(2)
-            video_file = genai.get_file(uploaded_file_name)
-            progress_percentage = min(progress_percentage + 5, 99)
-            processing_bar.progress(progress_percentage)
-
-        if video_file.state.name == "FAILED":
-            st.error("Failed to process video with Gemini API. Please try again or with a different video.")
-            return "Error: Video processing failed."
-
-        # --- Refined Prompt for Direct Content Extraction ---
-        prompt = (
-            "You are a highly precise content extraction AI. Your task is to provide a comprehensive, "
-            "detailed, and professional transcription-like output of the visual content within this video. "
-            "Focus strictly on what is observable in the frames. "
-            "Capture and transcribe **all discernible on-screen text** (e.g., titles, captions, signs, presentations) verbatim. "
-            "Describe all significant actions, subjects, settings, and visual elements. "
-            "If there are clear visual cues indicating people speaking or a dialogue, describe who is speaking (if identifiable) "
-            "and what the visual context of their speech is, but **do not attempt to transcribe spoken words from audio**. "
-            "Infer and describe the progression of events and any narrative visually conveyed. "
-            "Present the extracted content in clean, well-formatted paragraphs, ordering events chronologically as they appear in the video. "
-            "Aim for maximum detail and fidelity to the visual information."
-        )
+        # Create a temporary file path for the audio output
+        # Using tempfile.NamedTemporaryFile for robust temporary file creation
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
+            temp_audio_path = temp_audio_file.name
         
-        # Using gemini-pro-vision, as it's the multimodal model for video input
-        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
-        response = model.generate_content([prompt, video_file], stream=False)
+        st.info(f"Loading video: {video_path}")
+        # Load the video file. pydub will automatically use ffmpeg.
+        audio = AudioSegment.from_file(video_path)
         
-        if response and hasattr(response, 'text'):
-            return response.text
-        else:
-            st.error("Gemini API response did not contain expected text content.")
-            return "Error: Gemini API did not return valid text."
-
+        st.info(f"Exporting audio to: {temp_audio_path}")
+        # Export the audio to MP3 format
+        audio.export(temp_audio_path, format="mp3")
+        
+        return temp_audio_path
     except Exception as e:
-        st.error(f"An error occurred during Gemini API interaction: {e}")
-        return "Error: Could not extract information using Gemini API."
-    finally:
-        if uploaded_file_name:
-            try:
-                genai.delete_file(uploaded_file_name)
-                st.success("Temporary file successfully cleaned up from Gemini API.")
-            except Exception as e:
-                st.warning(f"Failed to delete uploaded file from Gemini API: {e}. "
-                           "Please check your Gemini API usage or manually clear if possible.")
+        st.error(f"Error extracting audio from video: {e}")
+        st.warning("Ensure that 'ffmpeg' is correctly installed and accessible in the environment.")
+        return None
+
+def transcribe_audio_with_gemini(audio_path):
+    """
+    Transcribes an audio file using Google Gemini API.
+    Uploads the file, polls for processing status, and then transcribes.
+    """
+    try:
+        # Upload the audio file to Gemini's temporary storage for processing
+        st.info("Uploading audio for transcription to Google Gemini...")
+        audio_file = genai.upload_file(path=audio_path)
+        
+        # Poll for file processing status
+        with st.spinner(f"Processing audio file '{audio_file.display_name}' with Gemini... This might take a moment."):
+            while audio_file.state.name == "PROCESSING":
+                time.sleep(2) # Wait for 2 seconds before polling again
+                audio_file = genai.get_file(audio_file.name) # Refresh file status
+
+        if audio_file.state.name == "FAILED":
+            st.error(f"Audio file processing failed on Gemini's side for: {audio_file.display_name}. Please try again or check the file format.")
+            genai.delete_file(audio_file.name) # Clean up failed upload
+            return None
+
+        # Start transcription
+        st.info("Transcribing audio content... This can take longer for larger files.")
+        response = model.generate_content(["Transcribe the following audio, providing only the spoken text:", audio_file])
+        
+        # Clean up: Delete the uploaded file from Gemini's storage to free up space and manage quota
+        genai.delete_file(audio_file.name)
+        
+        # Accessing text content might need to check if response.text exists
+        return response.text if response.text else "No transcription found."
+    except genai.types.BlockedPromptException as e:
+        st.error(f"Transcription blocked: {e.response.prompt_feedback.block_reason_message}. Please adjust content or retry.")
+        return None
+    except Exception as e:
+        st.error(f"An error occurred during Gemini transcription: {e}")
+        st.warning("Please ensure your video is not excessively long, as there are API usage limits.")
+        # Attempt to delete the file if an error occurred after upload but before deletion
+        try:
+            if 'audio_file' in locals() and audio_file.name:
+                genai.delete_file(audio_file.name)
+        except Exception as cleanup_e:
+            st.warning(f"Failed to clean up Gemini file after error: {cleanup_e}")
+        return None
+
+def create_word_document(text):
+    """Creates a simple Word document (BytesIO object) from text."""
+    document = Document()
+    document.add_paragraph(text)
+    
+    # Save document to a BytesIO object (in-memory file)
+    bio = BytesIO()
+    document.save(bio)
+    bio.seek(0) # Rewind to the beginning of the BytesIO object
+    return bio
 
 # --- Streamlit UI Layout ---
 
+# Sidebar Content
 with st.sidebar:
-    st.header("How to Use")
-    st.info("""
-    1.  **Upload your video file** using the "Upload a video file" button on the main page.
-        (Gemini API has its own internal limits for video size/duration, typically up to 2 minutes for direct file uploads.)
-    2.  Once uploaded, click the **"Generate Content Summary"** button.
-    3.  The app will then use the Google Gemini API to analyze your video's **visual content**.
-    4.  The extracted descriptive text (visual "transcription") will be displayed in the main area.
-        You can then copy it directly or download it as a Microsoft Word (.docx) document.
-    """)
+    st.header("About This App ℹ️")
+    st.markdown(
+        """
+        This application harnesses the power of **Google Gemini AI**
+        to convert the spoken words from your video files into written text (transcription).
+        It's designed for efficiency and ease of use, providing a quick way
+        to get textual content from your video recordings.
+        """
+    )
+    
+    st.header("How to Use 🚀")
+    st.markdown(
+        """
+        1.  **Upload Your Video:** Use the file uploader in the main area to select your video file.
+            (Supported formats: MP4, MOV, AVI, MKV).
+        2.  **Initiate Transcription:** Click the "Transcribe Video" button. The app will first
+            extract the audio, then send it to Google Gemini for transcription.
+            This process can take some time depending on video length and file size.
+        3.  **Review & Download:** Once the transcription is complete, the extracted text
+            will be displayed below. You can easily copy the text or download it
+            as a Microsoft Word (`.docx`) document.
+        """
+    )
+    
+    st.header("Help & Support ❓")
+    st.markdown(
+        """
+        *   **Supported Video Formats:** MP4, MOV, AVI, MKV.
+        *   **Audio Clarity:** For best results, ensure the audio in your video is clear with minimal background noise.
+        *   **Processing Time:** Longer or higher-quality videos will take more time to process.
+            Please be patient, especially with large files.
+        *   **Troubleshooting:**
+            *   If transcription fails, try a shorter video.
+            *   Verify your `GOOGLE_API_KEY` is correctly set up.
+            *   Check the app's logs on Render.com for more detailed error messages.
+        *   **Limitations:** This app currently only extracts spoken dialogue. On-screen text (OCR) is not supported in this version.
+        """
+    )
+    
+    st.header("Developed By")
+    st.markdown("Your Name/Company Name") # Customize this!
+    st.markdown("[Your Website/GitHub/LinkedIn Link (Optional)]") # Customize this!
+    st.markdown("---")
+    st.info("Powered by Google Gemini & Streamlit.")
 
-    st.header("About This App")
-    st.markdown("""
-    This application helps you get detailed textual insights from your video content by leveraging the
-    **Google Gemini Pro Vision model**. It analyzes video frames to provide a comprehensive and
-    structured summary of **all visually observable information**, including on-screen text,
-    actions, and visual narratives.
-
-    ---
-
-    **CRITICAL CLARIFICATION: Visual vs. Audio Transcription**
-
-    It is paramount to understand that this app, using `gemini-pro-vision`, performs **visual content extraction and on-screen text transcription only.**
-
-    * **✅ What it DOES:** Provides a highly detailed description of everything visible in the video frames. It will capture and output any text that appears on screen (like captions, titles, or presentation slides). It will describe visual cues that might suggest dialogue (e.g., "Person A is seen speaking to Person B").
-    * **❌ What it DOES NOT do:** It **does NOT "listen" to the audio track** of your video. Therefore, it cannot transcribe spoken words, distinguish between multiple speakers based on their voices, or generate a verbatim transcript of a conversation. For that, a dedicated **Automatic Speech Recognition (ASR)** service is required, which is a different technology.
-
-    The output you receive will be a "visual transcription" – a detailed, paragraph-ordered report of the video's visual content.
-    """)
-
-    st.header("Future Options & Features (Placeholder)")
-    st.markdown("""
-    * **True Audio Transcription:** Integration with a dedicated ASR service for spoken words.
-    * **Smart Summarization:** Advanced AI-driven summarization and keyword extraction from content.
-    * **Content Translation:** Ability to translate extracted content into various languages.
-    * **Speaker Identification:** Diarization to identify different speakers in the video (for audio-based content).
-    * **Timestamped Events:** Generate summaries or transcripts with precise timestamps.
-    * **More Input Formats:** Support for video URLs (e.g., YouTube links) in addition to file uploads.
-    """)
-
-st.title("🎥 Professional Video Visual Content Extractor & Transcriber")
-st.write("Upload your video to get a comprehensive, detailed textual 'transcription' of its visual content. "
-         "This app leverages the advanced visual analysis capabilities of the Google Gemini API to extract "
-         "all observable information and present it in a clean, copyable, and downloadable format.")
+# Main Area Content
+st.title("AI Video to Text Transcriber 🎥✍️")
+st.markdown("""
+Upload your video file here. Our intelligent system will extract the audio and provide
+a comprehensive text transcription of the spoken content.
+""")
 
 uploaded_file = st.file_uploader(
-    "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
-    type=["mp4", "mov", "mkv", "avi", "webm"],
-    help="Gemini API for video processing typically supports videos up to ~2 minutes. Larger files may fail or take longer."
+    "Upload a video file to transcribe",
+    type=["mp4", "mov", "avi", "mkv"], # Common video formats
+    accept_multiple_files=False, # Only allow one video at a time
+    help="Select a video file (MP4, MOV, AVI, MKV). File size limits may apply based on deployment platform."
 )
 
-transcript_display_area = st.empty()
+transcribed_text = ""
+video_path = None # Initialize to None
 
 if uploaded_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        video_path = tmp_file.name
-
-    st.video(video_path)
-
-    if st.button("Generate Content Summary", type="primary", use_container_width=True):
-        with st.spinner("Analyzing video visual content with Gemini API... This may take a moment based on video length and complexity."):
-            extracted_text = extract_text_with_gemini(video_path)
-
-        with transcript_display_area.container():
-            st.markdown("---")
-            st.subheader("Extracted Visual Content (Visual 'Transcription')")
-            st.markdown(extracted_text)
-
-            st.text_area(
-                "Copyable Visual Content Summary",
-                value=extracted_text,
-                height=300,
-                key="copy_summary_area",
-                help="You can easily copy the entire summary from this text box using the built-in copy button."
-            )
-
-            doc = Document()
-            doc.add_heading('Video Visual Content Summary', level=1)
-            # Split by double newline to preserve paragraphs from Gemini's output
-            for paragraph_text in extracted_text.split('\n\n'):
-                # Add text to the document, ensuring empty paragraphs are skipped
-                if paragraph_text.strip():
-                    doc.add_paragraph(paragraph_text.strip())
-
-            bio = io.BytesIO()
-            doc.save(bio)
-            bio.seek(0)
-
-            st.download_button(
-                label="Download as Word (DOCX)",
-                data=bio.getvalue(),
-                file_name="video_visual_content_summary.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                help="Download the extracted visual content summary as a Microsoft Word document for offline use."
-            )
+    # Display the uploaded video
+    st.subheader("Uploaded Video Preview:")
+    st.video(uploaded_file, format="video/mp4", start_time=0)
     
-    if os.path.exists(video_path):
-        os.unlink(video_path)
+    # Save the uploaded file temporarily to a known path
+    # This is crucial because pydub (and moviepy) needs a physical file path.
+    st.info("Saving video to a temporary location...")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_video_file:
+        tmp_video_file.write(uploaded_file.read())
+        video_path = tmp_video_file.name
+    st.success(f"Video '{uploaded_file.name}' uploaded successfully and ready for processing!")
 
+    # Transcription Button
+    if st.button("Transcribe Video", help="Click to start the transcription process."):
+        if video_path:
+            # Step 1: Extract audio
+            with st.spinner("Step 1/2: Extracting audio from video..."):
+                audio_file_path = extract_audio_from_video(video_path)
+
+            if audio_file_path:
+                # Step 2: Transcribe audio
+                transcribed_text = transcribe_audio_with_gemini(audio_file_path)
+                
+                # Clean up temporary audio file immediately after use
+                try:
+                    os.remove(audio_file_path)
+                    st.success("Temporary audio file cleaned up.")
+                except OSError as e:
+                    st.warning(f"Could not remove temporary audio file: {e}")
+            else:
+                st.error("Audio extraction failed. Cannot proceed with transcription.")
+        else:
+            st.error("No video file found to transcribe. Please upload a video first.")
+    
+    # Always clean up the temporary video file once processing is done (or fails)
+    # This ensures storage isn't filled on the server.
+    if video_path and os.path.exists(video_path):
+        try:
+            os.remove(video_path)
+            st.info("Temporary video file cleaned up.")
+        except OSError as e:
+            st.warning(f"Could not remove temporary video file: {e}")
+
+# Display transcribed text and download options
+if transcribed_text:
+    st.subheader("🎉 Extracted Text (Transcription):")
+    st.text_area(
+        "Transcription Output",
+        transcribed_text,
+        height=400, # Increased height for better readability
+        help="This is the automatically transcribed text from your video's audio. You can select and copy it."
+    )
+    
+    # Columns for Download button and copy instruction
+    col1, col2 = st.columns([0.25, 0.75]) # Adjust column width for better alignment
+    
+    # Download button for Word file
+    word_doc_bytes = create_word_document(transcribed_text)
+    with col1:
+        st.download_button(
+            label="📄 Download as Word (.docx)",
+            data=word_doc_bytes,
+            file_name="video_transcription.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            help="Download the transcribed text as a Microsoft Word document."
+        )
+
+    # Note about copy functionality: Streamlit doesn't have a direct "copy to clipboard" button
+    # without custom JavaScript (which is outside the scope of a single app.py).
+    with col2:
+        st.info("To copy the text, simply highlight it in the 'Transcription Output' box and press Ctrl+C (Cmd+C).")
+
+elif uploaded_file is None: # Only show this message if no file is uploaded yet
+    st.info("Upload your video file above and click 'Transcribe Video' to begin the process.")
