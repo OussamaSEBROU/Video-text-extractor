@@ -1,25 +1,31 @@
-# Use a slim Python base image
+# Use a lightweight Python base image
 FROM python:3.9-slim-buster
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /app
 
-# --- Install System Dependencies (only build-essential for pip compilation if needed) ---
-# We no longer need ffmpeg here as moviepy is removed.
+# Install system dependencies required by pydub (ffmpeg)
+# and other build-essential tools if needed
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    ffmpeg \
     build-essential \
-    && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# --- Install Python Dependencies ---
+# Copy the requirements file into the container
 COPY requirements.txt .
-RUN pip install --no-cache-dir setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
 
-# --- Copy Application Code ---
-COPY . .
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# --- Run the Streamlit Application ---
-CMD ["streamlit", "run", "app.py"]
+# Copy the Streamlit application file into the container
+COPY app.py .
+
+# Expose the port that Streamlit runs on (default is 8501)
+EXPOSE 8501
+
+# Command to run the Streamlit application
+# --server.port sets the port for Streamlit
+# --server.enableCORS false and --server.enableXsrfProtection false are often needed for deployments
+# behind proxies like Render to avoid connection issues.
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
