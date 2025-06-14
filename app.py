@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled, NoVideosGiven
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 from docx import Document
 from io import BytesIO
 import os
@@ -40,6 +40,10 @@ def get_youtube_transcript_text(video_id):
     Fetches the transcript for a given YouTube video ID.
     Attempts to get any available transcript (language-agnostic).
     """
+    if not video_id:
+        st.error("No YouTube video ID provided.")
+        return None
+
     try:
         # Get all available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
@@ -48,12 +52,12 @@ def get_youtube_transcript_text(video_id):
         # Fallback to the first available transcript if specific preference is not met
         transcript_data = None
         for t in transcript_list:
-            if t.is_generated == False: # Prefer manually created
+            if not t.is_generated: # Prefer manually created
                 transcript_data = t.fetch()
                 break
         if transcript_data is None: # If no manual, try generated
             for t in transcript_list:
-                if t.is_generated == True:
+                if t.is_generated:
                     transcript_data = t.fetch()
                     break
         if transcript_data is None and transcript_list: # Fallback to any if none above
@@ -70,9 +74,6 @@ def get_youtube_transcript_text(video_id):
         return None
     except TranscriptsDisabled:
         st.warning(f"Transcripts are disabled for video ID: {video_id}.")
-        return None
-    except NoVideosGiven:
-        st.error("No YouTube video ID provided.")
         return None
     except Exception as e:
         st.error(f"An unexpected error occurred while fetching transcript: {e}")
@@ -133,7 +134,9 @@ with st.sidebar:
     2.  **Transcribe**: Click the "Process Video" button. The app will fetch the transcript (if available) and use the Gemini API to reformat it into clean paragraphs.
     3.  **Review & Download**: The processed transcript will appear in the main area. You can copy it or download it as a Word document.
 
-    **Note for Uploaded Videos**: Direct transcription of uploaded video files within this single-file app via the Gemini API is complex and typically requires specialized services for audio extraction and chunking. This app currently focuses on YouTube video processing and text refinement using Gemini.
+    **Important Note on Video Transcription**:
+    * For **YouTube videos**, this app uses the `youtube_transcript_api` to get the text, then the Gemini API to refine it. The Gemini API itself does not directly transcribe video URLs.
+    * For **uploaded video files**, direct transcription within this simple app is not feasible. This feature would require complex audio extraction and specialized audio-to-text services. This app currently focuses on YouTube video processing and text refinement using Gemini.
     """)
 
     st.markdown("---")
@@ -208,27 +211,10 @@ if processed_transcript:
     col1, col2 = st.columns([0.15, 0.85]) # Adjust column width for button alignment
 
     with col1:
-        # Copy button (using Streamlit's built-in button and a simple JS workaround if needed,
-        # but text_area's inherent copy is often sufficient)
-        # For direct clipboard copy, you'd typically need a custom HTML component.
         # Streamlit's text_area allows easy manual copying by the user.
-        # If a dedicated copy button is strictly needed, it requires JS injection via components.v1.html.
-        # For simplicity and robust functionality, relying on text_area's copy is common.
-        if st.button("Copy Transcript"):
-            st.code("To copy, simply select the text above and use Ctrl+C (Cmd+C).") # Guide user
-            # A more robust copy-to-clipboard:
-            # st.components.v1.html(
-            #     f"""
-            #     <script>
-            #     navigator.clipboard.writeText(`{processed_transcript}`).then(function() {{
-            #         alert('Transcript copied to clipboard!');
-            #     }}, function(err) {{
-            #         alert('Could not copy text: ', err);
-            #     }});
-            #     </script>
-            #     """,
-            #     height=0, width=0, scrolling=False
-            # )
+        # For a true "copy to clipboard" button, it would require a custom Streamlit component
+        # involving JavaScript, which adds complexity to a single-file app.
+        st.code("To copy, select the text above and use Ctrl+C/Cmd+C.")
 
     with col2:
         # Download as Word button
@@ -242,6 +228,5 @@ if processed_transcript:
         )
 else:
     st.info("Enter a YouTube video URL and click 'Process Video' to see the transcript here.")
-
 
 
