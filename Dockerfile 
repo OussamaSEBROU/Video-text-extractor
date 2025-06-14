@@ -4,14 +4,27 @@ FROM python:3.9-slim-buster
 # Set the working directory inside the container
 WORKDIR /app
 
+# Install system dependencies, including ffmpeg and any other necessary libraries
+# Add --no-install-recommends to keep image size smaller
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    # You might not need these, but they are common for multimedia processing
+    # libavcodec-dev \
+    # libavformat-dev \
+    # libswscale-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy the requirements file and install Python dependencies
 COPY requirements.txt .
-# Install ffmpeg and then your Python dependencies
-RUN apt-get update && apt-get install -y ffmpeg
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your application code
 COPY . .
+
+# Ensure ffmpeg is in the PATH (should be by default, but explicit for troubleshooting)
+ENV PATH="/usr/bin:${PATH}"
 
 # Command to run your Streamlit app
 CMD ["streamlit", "run", "app.py"]
