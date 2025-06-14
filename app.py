@@ -77,7 +77,7 @@ def extract_text_with_gemini(video_file_path):
         )
         
         # Using gemini-pro-vision, as it's the multimodal model for video input
-        model = genai.GenerativeModel('gemini-pro-vision')
+        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
         response = model.generate_content([prompt, video_file], stream=False)
         
         if response and hasattr(response, 'text'):
