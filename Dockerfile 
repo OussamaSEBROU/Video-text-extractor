@@ -4,46 +4,22 @@ FROM python:3.9-slim-buster
 # Set the working directory inside the container
 WORKDIR /app
 
-# --- Install System Dependencies ---
-# Update apt-get, install build-essential (for compiling), ffmpeg,
-# and other common libraries moviepy might indirectly need for building.
-# --no-install-recommends helps keep the image size smaller.
+# --- Install System Dependencies (only build-essential for pip compilation if needed) ---
+# We no longer need ffmpeg here as moviepy is removed.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    ffmpeg \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    libffi-dev \
-    libssl-dev \
-    zlib1g-dev \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Install Python Dependencies ---
-# Copy requirements.txt first to leverage Docker's build cache.
-# Install setuptools and wheel separately first, as they are often needed for complex packages.
 COPY requirements.txt .
 RUN pip install --no-cache-dir setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # --- Copy Application Code ---
 COPY . .
-
-# --- Environment Variables (Ensure ffmpeg is on PATH) ---
-# This is usually handled by apt-get, but explicitly setting it can help.
-ENV PATH="/usr/bin:${PATH}"
-
-# --- Build-time Verification (for debugging in logs) ---
-# This command runs during the Docker build process.
-# Its output will appear in your Render.com build logs,
-# confirming if ffmpeg is found and its version.
-RUN echo "--- Verifying FFmpeg Installation ---" && \
-    which ffmpeg && \
-    ffmpeg -version && \
-    echo "--- FFmpeg Verification Complete ---"
 
 # --- Run the Streamlit Application ---
 CMD ["streamlit", "run", "app.py"]
