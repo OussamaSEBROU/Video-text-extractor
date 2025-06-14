@@ -69,6 +69,7 @@ def extract_text_with_gemini(video_file_path):
         # --- Refined Prompt for Direct Content Extraction ---
         prompt = (
             "You are a highly precise content extraction AI. Your task is to extract the text from the video without change anything thing in the content"
+" the language of extracted text should be same of the video .. be carefuly on that"
 
             "Present the extracted content in clean, well-formatted paragraphs, ordering events chronologically as they appear in the video. "
            
