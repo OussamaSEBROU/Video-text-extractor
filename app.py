@@ -1,3 +1,4 @@
+
 import streamlit as st
 import os
 import tempfile
@@ -71,7 +72,8 @@ def extract_text_with_ai(video_file_path):
         # --- Refined Prompt for Direct Content Extraction (UNMODIFIED AS PER INSTRUCTION) ---
         prompt = (
             "You are a highly precise content extraction AI. Your task is to extract the text from the video without change anything thing in the content"
-" never ever add an introduction before the extracted text in outputs, put just the extracted text exactly" 
+"you never should Put a introduction before the extracted text, Put Just the extracted text exactly, without change anything else"
+
 " the language of extracted text should be same of the video .. be carefuly on that"
 
             "Present the extracted content in clean, well-formatted paragraphs, ordering events chronologically as they appear in the video. "
@@ -263,24 +265,39 @@ st.markdown("""
         border-bottom-left-radius: 4px;
     }
 
-    /* --- Chat Input Styling --- */
-    .stTextInput label {
+    /* --- Chat Input Styling (Elastic Text Area) --- */
+    .stTextArea label {
         font-weight: 600;
         color: var(--text-color);
     }
-    .stTextInput > div > div > input {
+    .stTextArea [data-baseweb="textarea"] textarea {
+        min-height: 50px; /* Minimum height for the input */
+        max-height: 150px; /* Maximum height before scrolling */
+        overflow-y: auto; /* Enable scrolling when content exceeds max-height */
+        resize: vertical; /* Allow manual vertical resizing */
         border-radius: 10px;
         padding: 10px;
         background-color: var(--background-color-secondary);
         color: var(--text-color);
+        font-family: 'Inter', sans-serif;
+    }
+    /* Hide scrollbar when not needed, but keep functionality */
+    .stTextArea [data-baseweb="textarea"] textarea::-webkit-scrollbar {
+        width: 8px;
+    }
+    .stTextArea [data-baseweb="textarea"] textarea::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 4px;
+    }
+    .stTextArea [data-baseweb="textarea"] textarea::-webkit-scrollbar-track {
+        background-color: transparent;
     }
 
     /* --- Sidebar Custom Styling --- */
-    /* Make the entire sidebar background gray and theme-compatible */
     section.main[data-testid="stSidebar"] > div:first-child {
-        background-color: var(--background-color-secondary); /* Grayer background */
+        background-color: var(--background-color-secondary); /* Grayer background, adapts to theme */
         color: var(--text-color);
-        padding-top: 20px; /* Add some padding at the top */
+        padding-top: 20px;
     }
 
     .sidebar .stButton > button {
@@ -297,36 +314,36 @@ st.markdown("""
         transition: background-color 0.2s, color 0.2s;
     }
     .sidebar .stButton > button:hover {
-        background-color: rgba(0, 123, 255, 0.1); /* Light blue hover */
-        color: #0A6EFD; /* Vibrant blue on hover */
+        background-color: rgba(0, 123, 255, 0.1);
+        color: #0A6EFD;
     }
     .sidebar .stButton > button.active-page {
-        background-color: #0A6EFD; /* Active page button */
+        background-color: #0A6EFD;
         color: white;
         font-weight: 600;
         box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
     }
-    .sidebar h2, .sidebar h3 { /* Styling for sidebar section headers */
-        color: var(--text-color); /* Ensure headers are readable on new gray bg */
-        font-size: 1.25em; /* Slightly larger */
+    .sidebar h2, .sidebar h3 {
+        color: var(--text-color);
+        font-size: 1.25em;
         margin-top: 25px;
-        margin-bottom: 10px; /* Reduced margin */
-        border-bottom: 1px solid var(--border-color); /* Subtle separator */
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 8px;
-        padding-left: 15px; /* Indent headers slightly */
+        padding-left: 15px;
         padding-right: 15px;
     }
-    .sidebar p { /* Styling for general text in sidebar */
+    .sidebar p {
         font-size: 0.95em;
         line-height: 1.4;
         color: var(--text-color);
         margin-bottom: 10px;
-        padding-left: 15px; /* Indent text slightly */
+        padding-left: 15px;
         padding-right: 15px;
     }
-    .sidebar .stAlert { /* Styling for info/warning boxes in sidebar */
+    .sidebar .stAlert {
         font-size: 0.9em;
-        padding-left: 15px; /* Maintain padding */
+        padding-left: 15px;
         padding-right: 15px;
     }
 </style>
@@ -433,7 +450,7 @@ if st.session_state.main_page_selection == "Video Extraction":
 
         if st.button("Generate Content Summary", type="primary", use_container_width=True):
             with st.spinner("Analyzing video visual content with our AI... This may take a moment based on video length and complexity."):
-                extracted_text = extract_text_with_ai(video_path)
+                extracted_text = extract_text_ai(video_path)
                 st.session_state.extracted_text = extracted_text # Store extracted text in session state
                 st.session_state.chat_history = [] # Reset chat history when new text is extracted
 
@@ -474,53 +491,4 @@ if st.session_state.main_page_selection == "Video Extraction":
                     label="Download as Word (DOCX)",
                     data=bio.getvalue(),
                     file_name="video_visual_content_summary.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    help="Download the extracted visual content summary as a Microsoft Word document for offline use."
-                )
-        
-        # Ensure temporary file is cleaned up after use
-        if os.path.exists(video_path):
-            os.unlink(video_path)
-
-elif st.session_state.main_page_selection == "Chat with Content":
-    st.subheader("Chat with Extracted Content")
-    if not st.session_state.extracted_text:
-        st.info("Please go to 'Video Extraction' to upload a video and generate content first to enable chat.")
-    else:
-        st.write("Ask questions about the video content that was just extracted.")
-
-        # Chat messages container with scrolling
-        st.markdown("<div id='chat-messages-scroll-container' class='chat-messages-container'>", unsafe_allow_html=True)
-        for message in st.session_state.chat_history:
-            if message['role'] == 'user':
-                st.markdown(f"<div class='chat-message-user'><b>You:</b> {message['content']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='chat-message-ai'><b>TahiriExtractor AI:</b> {message['content']}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True) # Close chat messages container
-
-        # JavaScript to scroll to the bottom of the chat container
-        st.markdown("""
-        <script>
-            var objDiv = document.getElementById("chat-messages-scroll-container");
-            if (objDiv) {
-                objDiv.scrollTop = objDiv.scrollHeight;
-            }
-        </script>
-        """, unsafe_allow_html=True)
-
-        user_chat_query = st.text_input("Your question about the content:", key="chat_input")
-
-        if st.button("Ask TahiriExtractor AI", type="secondary"):
-            if user_chat_query:
-                st.session_state.chat_history.append({"role": "user", "content": user_chat_query})
-                with st.spinner("TahiriExtractor AI is thinking..."):
-                    ai_response = chat_with_extracted_text(user_chat_query)
-                    st.session_state.chat_history.append({"role": "ai", "content": ai_response})
-                st.rerun()
-            else:
-                st.warning("Please enter a question to chat.")
-
-# Ensure the main content wrapper is closed
-st.markdown("</div>", unsafe_allow_html=True)
-
-
+                    mime="appl
