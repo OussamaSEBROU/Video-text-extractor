@@ -27,6 +27,8 @@ if 'extracted_text' not in st.session_state:
     st.session_state.extracted_text = ""
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+if 'page_selection' not in st.session_state:
+    st.session_state.page_selection = "Video Extraction" # Default page
 
 # --- Helper Function for AI Video Processing ---
 
@@ -131,42 +133,14 @@ def chat_with_extracted_text(user_query):
     except Exception as e:
         return f"An error occurred during chat: {e}"
 
-# --- Streamlit UI Layout ---
-
-with st.sidebar:
-    st.header("How to Use TahiriExtractor")
-    st.markdown("""
-    * **Step 1:** Upload your video file using the "Upload a video file" button on the main page.
-    * **Step 2:** Click the "Generate Content Summary" button.
-    * **Step 3:** Our AI-powered system will analyze the visual content of your video.
-    * **Step 4:** The extracted descriptive text (visual 'transcription') will be displayed in the main area, with options to copy or download as a Word file.
-    """)
-
-    st.header("About TahiriExtractor")
-    st.markdown("""
-    **TahiriExtractor** is an innovative application leveraging **advanced Artificial Intelligence** to:
-    * Extract deep textual insights from video visual content.
-    * Analyze video frames for a comprehensive, structured summary.
-    * Capture and transcribe any on-screen text, actions, and visual narratives.
-    * **Important Note:** This application does not transcribe audio content (speech-to-text).
-    """)
-
-    st.header("Contact Us")
-    # Updated mailto link with a more professional pre-filled message
-    st.markdown("""
-    Have questions, feedback, or need support? We'd love to hear from you!
-
-    Contact us via email:
-    [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Professional%20Inquiry%20regarding%20TahiriExtractor%20Application&body=Dear%20TahiriExtractor%20Team%2C%0A%0AI%20am%20writing%20to%20you%20from%20the%20TahiriExtractor%20application.%20My%20inquiry%20is%20regarding%3A%20%5Bbriefly%20state%20purpose%5D%0A%0AThank%20you%20for%20your%20time%20and%20assistance.%0A%0ASincerely%2C%0A%5BYour%20Name%5D)
-    """)
-
-# Main title with professional styling and explicit blue color
+# --- Custom CSS for Theming and Chat Styling ---
 st.markdown("""
 <style>
     /* General body styling for theme compatibility */
     body {
         color: var(--text-color); /* Streamlit's default text color */
         background-color: var(--background-color); /* Streamlit's default background color */
+        font-family: 'Inter', sans-serif; /* Apply Inter font globally */
     }
 
     /* Main Title Container */
@@ -209,7 +183,7 @@ st.markdown("""
         color: #0A6EFD; /* Consistent vibrant blue emphasis */
     }
 
-    /* Extracted Text Output Styling */
+    /* Extracted Text Output Styling (no subheader above it) */
     .extracted-text-output {
         background-color: var(--background-color-secondary); /* Adapts to Streamlit theme */
         padding: 20px;
@@ -217,7 +191,7 @@ st.markdown("""
         border-left: 6px solid #0A6EFD; /* Stronger blue border */
         margin-bottom: 25px;
         overflow-wrap: break-word;
-        font-family: 'Inter', sans-serif; /* Specified font */
+        font-family: 'Inter', sans-serif;
         line-height: 1.6;
         color: var(--text-color); /* Adapts to Streamlit theme */
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -231,50 +205,51 @@ st.markdown("""
         margin-bottom: 25px;
     }
 
-    /* Chat Container */
-    .chat-container {
-        background-color: var(--background-color-secondary); /* Adapts to Streamlit theme */
-        padding: 20px;
-        border-radius: 15px;
-        margin-top: 30px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        max-height: 500px; /* Fixed height for scrolling */
+    /* Chat Container for scrolling */
+    .chat-messages-container {
+        max-height: 400px; /* Fixed height for scrolling chat */
         overflow-y: auto; /* Enable vertical scrolling */
-        display: flex;
-        flex-direction: column;
+        padding-right: 15px; /* Space for scrollbar */
+        padding-top: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        border-radius: 10px;
+        background-color: var(--background-color-tertiary); /* Subtle background for chat area */
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Inner shadow */
     }
+
     /* Chat Message Styling (ChatGPT-like) */
-    .chat-message-user {
-        background-color: var(--primary-color-20); /* Lighter shade of primary color */
-        color: var(--text-color);
+    .chat-message-user, .chat-message-ai {
         padding: 12px 18px;
         border-radius: 18px; /* More rounded like chat bubbles */
-        margin-bottom: 10px;
-        text-align: left;
-        align-self: flex-end; /* Align user messages to the right */
-        max-width: 85%; /* Limits bubble width */
-        margin-left: auto; /* Pushes to the right */
+        margin-bottom: 8px; /* Slightly less margin for denser chat */
+        max-width: 80%; /* Limits bubble width */
+        font-size: 0.95em;
+        line-height: 1.5;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08); /* Subtle shadow */
+        word-wrap: break-word; /* Ensure long words break */
+    }
+    .chat-message-user {
+        background-color: var(--primary-color-20); /* Light blue/green for user messages */
+        color: var(--text-color);
+        margin-left: auto; /* Aligns user messages to the right */
+        border-bottom-right-radius: 4px; /* Sharpen one corner */
     }
     .chat-message-ai {
-        background-color: var(--secondary-background-color); /* Streamlit's secondary bg or a slightly darker shade */
+        background-color: var(--secondary-background-color); /* Streamlit's secondary bg for AI messages */
         color: var(--text-color);
-        padding: 12px 18px;
-        border-radius: 18px; /* More rounded like chat bubbles */
-        margin-bottom: 10px;
-        text-align: left;
-        align-self: flex-start; /* Align AI messages to the left */
-        max-width: 85%; /* Limits bubble width */
-        margin-right: auto; /* Pushes to the left */
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08); /* Subtle shadow */
+        margin-right: auto; /* Aligns AI messages to the left */
+        border-bottom-left-radius: 4px; /* Sharpen one corner */
     }
-    /* Streamlit's native component styling for text area */
-    .stTextArea [data-baseweb="textarea"] textarea {
-        font-family: 'Inter', sans-serif; /* Apply Inter font to text area */
+    .stTextInput label { /* Style for chat input label */
+        font-weight: 600;
+        color: var(--text-color);
     }
-    /* Style for the chat input text box */
-    .stTextInput {
-        margin-top: 20px; /* Space above chat input */
+    .stTextInput > div > div > input { /* Style for chat input field */
+        border-radius: 10px;
+        padding: 10px;
+        background-color: var(--background-color-secondary);
+        color: var(--text-color);
     }
 </style>
 
@@ -290,84 +265,104 @@ st.markdown("""
         <p><strong>Key Point:</strong> Supports videos up to <strong>15 minutes</strong> in duration for efficient analysis. Focuses on visual content; does not transcribe audio.</p>
     </div>
 </div>
-""", unsafe_allow_html=True) # Professional, concise introduction
+""", unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader(
-    "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
-    type=["mp4", "mov", "mkv", "avi", "webm"],
-    help="Our AI system supports videos up to approximately 15 minutes in length. Larger files may fail or take longer."
+# --- Sidebar Navigation ---
+st.sidebar.header("Navigation")
+page_selection = st.sidebar.radio(
+    "Go to",
+    ("Video Extraction", "Chat with Content", "About TahiriExtractor", "Contact Us"),
+    key="page_selector"
 )
+st.session_state.page_selection = page_selection
 
-transcript_display_area = st.empty()
 
-if uploaded_file is not None:
-    # Save the uploaded file to a temporary location
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        video_path = tmp_file.name
+# --- Main Content Area ---
+if st.session_state.page_selection == "Video Extraction":
+    st.subheader("Extract Visual Content")
+    uploaded_file = st.file_uploader(
+        "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
+        type=["mp4", "mov", "mkv", "avi", "webm"],
+        help="Our AI system supports videos up to approximately 15 minutes in length. Larger files may fail or take longer."
+    )
 
-    st.video(video_path)
+    transcript_display_area = st.empty()
 
-    if st.button("Generate Content Summary", type="primary", use_container_width=True):
-        with st.spinner("Analyzing video visual content with our AI... This may take a moment based on video length and complexity."):
-            extracted_text = extract_text_with_ai(video_path)
-            st.session_state.extracted_text = extracted_text # Store extracted text in session state
-            st.session_state.chat_history = [] # Reset chat history when new text is extracted
+    if uploaded_file is not None:
+        # Save the uploaded file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            video_path = tmp_file.name
 
-        with transcript_display_area.container():
-            st.markdown("---")
-            
-            # Display the extracted text directly without an introduction/subheader
-            st.markdown(
-                f"""
-                <div class="extracted-text-output">
-                    {extracted_text}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        st.video(video_path)
 
-            # Copyable text area (with built-in copy icon)
-            st.text_area(
-                "Copyable Visual Content Summary",
-                value=extracted_text,
-                height=300,
-                key="copy_summary_area",
-                help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
-            )
+        if st.button("Generate Content Summary", type="primary", use_container_width=True):
+            with st.spinner("Analyzing video visual content with our AI... This may take a moment based on video length and complexity."):
+                extracted_text = extract_text_with_ai(video_path)
+                st.session_state.extracted_text = extracted_text # Store extracted text in session state
+                st.session_state.chat_history = [] # Reset chat history when new text is extracted
 
-            # Create and download Word document
-            doc = Document()
-            doc.add_heading('Video Visual Content Summary', level=1)
-            for paragraph_text in extracted_text.split('\n\n'):
-                if paragraph_text.strip():
-                    doc.add_paragraph(paragraph_text.strip())
+            with transcript_display_area.container():
+                st.markdown("---")
+                
+                # Display the extracted text directly without an introduction/subheader
+                st.markdown(
+                    f"""
+                    <div class="extracted-text-output">
+                        {extracted_text}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            bio = io.BytesIO()
-            doc.save(bio)
-            bio.seek(0)
+                # Copyable text area (with built-in copy icon)
+                st.text_area(
+                    "Copyable Visual Content Summary",
+                    value=extracted_text,
+                    height=300,
+                    key="copy_summary_area",
+                    help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
+                )
 
-            st.download_button(
-                label="Download as Word (DOCX)",
-                data=bio.getvalue(),
-                file_name="video_visual_content_summary.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                help="Download the extracted visual content summary as a Microsoft Word document for offline use."
-            )
-    
-    # --- Chat with Extracted Text Section ---
-    if st.session_state.extracted_text: # Only show chat if text has been extracted
-        st.markdown("<div id='chat-messages-scroll-container' class='chat-container'>", unsafe_allow_html=True)
-        st.subheader("Chat with the Extracted Content")
+                # Create and download Word document
+                doc = Document()
+                doc.add_heading('Video Visual Content Summary', level=1)
+                for paragraph_text in extracted_text.split('\n\n'):
+                    if paragraph_text.strip():
+                        doc.add_paragraph(paragraph_text.strip())
+
+                bio = io.BytesIO()
+                doc.save(bio)
+                bio.seek(0)
+
+                st.download_button(
+                    label="Download as Word (DOCX)",
+                    data=bio.getvalue(),
+                    file_name="video_visual_content_summary.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    help="Download the extracted visual content summary as a Microsoft Word document for offline use."
+                )
+        
+        # Ensure temporary file is cleaned up after use
+        if os.path.exists(video_path):
+            os.unlink(video_path)
+
+elif st.session_state.page_selection == "Chat with Content":
+    st.subheader("Chat with Extracted Content")
+    if not st.session_state.extracted_text:
+        st.info("Please go to 'Video Extraction' to upload a video and generate content first to enable chat.")
+    else:
         st.write("Ask questions about the video content that was just extracted.")
 
-        # Display chat history
+        # Chat messages container with scrolling
+        st.markdown("<div id='chat-messages-scroll-container' class='chat-messages-container'>", unsafe_allow_html=True)
         for message in st.session_state.chat_history:
             if message['role'] == 'user':
                 st.markdown(f"<div class='chat-message-user'><b>You:</b> {message['content']}</div>", unsafe_allow_html=True)
             else:
                 st.markdown(f"<div class='chat-message-ai'><b>TahiriExtractor AI:</b> {message['content']}</div>", unsafe_allow_html=True)
-        
+        st.markdown("</div>", unsafe_allow_html=True) # Close chat messages container
+
         # JavaScript to scroll to the bottom of the chat container
         st.markdown("""
         <script>
@@ -389,9 +384,28 @@ if uploaded_file is not None:
                 st.rerun()
             else:
                 st.warning("Please enter a question to chat.")
-        st.markdown("</div>", unsafe_allow_html=True) # Close chat container
 
-    # Ensure temporary file is cleaned up after use
-    if os.path.exists(video_path):
-        os.unlink(video_path)
+elif st.session_state.page_selection == "About TahiriExtractor":
+    st.subheader("About TahiriExtractor")
+    st.markdown("""
+    **TahiriExtractor** is an innovative application leveraging **advanced Artificial Intelligence** to:
+    * Extract deep textual insights from video visual content.
+    * Analyze video frames for a comprehensive, structured summary.
+    * Capture and transcribe any on-screen text, actions, and visual narratives.
+    * **Important Note:** This application does not transcribe audio content (speech-to-text).
+
+    Our mission is to provide an efficient and powerful tool for researchers, content creators, and professionals
+    who need to quickly understand and utilize the visual narrative embedded in video content.
+    """)
+
+elif st.session_state.page_selection == "Contact Us":
+    st.subheader("Contact Us")
+    st.markdown("""
+    Have questions, feedback, or need support? We'd love to hear from you!
+
+    Please feel free to reach out to our team. We are committed to providing excellent support and continuously improving TahiriExtractor.
+
+    Contact us via email:
+    [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Professional%20Inquiry%20regarding%20TahiriExtractor%20Application&body=Dear%20TahiriExtractor%20Team%2C%0A%0AI%20am%20writing%20to%20you%20from%20the%20TahiriExtractor%20application.%20My%20inquiry%20is%20regarding%3A%20%5Bbriefly%20state%20purpose%5D%0A%0AThank%20you%20for%20your%20time%20and%20assistance.%0A%0ASincerely%2C%0A%5BYour%20Name%5D)
+    """)
 
