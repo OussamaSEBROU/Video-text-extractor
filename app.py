@@ -27,8 +27,8 @@ if 'extracted_text' not in st.session_state:
     st.session_state.extracted_text = ""
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
-if 'page_selection' not in st.session_state:
-    st.session_state.page_selection = "Video Extraction" # Default page
+if 'main_page_selection' not in st.session_state: # Renamed to avoid confusion with sidebar elements
+    st.session_state.main_page_selection = "Video Extraction" # Default main page
 
 # --- Helper Function for AI Video Processing ---
 
@@ -136,39 +136,50 @@ def chat_with_extracted_text(user_query):
 # --- Custom CSS for Theming and Styling ---
 st.markdown("""
 <style>
-    /* General body styling for theme compatibility */
+    /* Global Inter font import and application */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body {
-        color: var(--text-color); /* Streamlit's default text color */
-        background-color: var(--background-color); /* Streamlit's default background color */
-        font-family: 'Inter', sans-serif; /* Apply Inter font globally */
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Main Title Container */
+    /* Streamlit overrides for better theme compatibility */
+    .stApp {
+        color: var(--text-color);
+        background-color: var(--background-color);
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-color);
+    }
+    p {
+        color: var(--text-color);
+    }
+
+    /* --- Main Title Container --- */
     .main-title-container {
         padding: 30px 0;
-        background: var(--background-color-secondary); /* Adapts to Streamlit theme */
+        background: var(--background-color-secondary);
         border-radius: 15px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow, generally fine for both themes */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         text-align: center;
     }
     .main-title {
-        color: #0A6EFD; /* A more distinct, vibrant professional blue */
+        color: #0A6EFD; /* Prominent professional blue */
         font-size: 2.8em;
         font-weight: 700;
         letter-spacing: 1px;
         margin-bottom: 10px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05); /* Very subtle, lightens on dark */
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
     .main-subtitle {
-        color: var(--text-color-secondary); /* Adapts to Streamlit theme */
+        color: var(--text-color-secondary);
         font-size: 1.2em;
         max-width: 800px;
         margin: 0 auto;
         line-height: 1.6;
     }
     .info-box {
-        background-color: var(--background-color-tertiary); /* Adapts to Streamlit theme */
+        background-color: var(--background-color-tertiary);
         padding: 20px;
         border-radius: 10px;
         text-align: center;
@@ -177,27 +188,27 @@ st.markdown("""
     }
     .info-box p {
         font-size: 1.05em;
-        color: var(--text-color); /* Adapts to Streamlit theme */
+        color: var(--text-color);
     }
     .info-box strong {
-        color: #0A6EFD; /* Consistent vibrant blue emphasis */
+        color: #0A6EFD;
     }
 
-    /* Extracted Text Output Styling (no subheader above it) */
+    /* --- Extracted Text Output Styling --- */
     .extracted-text-output {
-        background-color: var(--background-color-secondary); /* Adapts to Streamlit theme */
+        background-color: var(--background-color-secondary);
         padding: 20px;
         border-radius: 12px;
-        border-left: 6px solid #0A6EFD; /* Stronger blue border */
+        border-left: 6px solid #0A6EFD;
         margin-bottom: 25px;
         overflow-wrap: break-word;
         font-family: 'Inter', sans-serif;
         line-height: 1.6;
-        color: var(--text-color); /* Adapts to Streamlit theme */
+        color: var(--text-color);
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     
-    /* Video Player Styling */
+    /* --- Video Player Styling --- */
     .stVideo {
         border-radius: 12px;
         overflow: hidden;
@@ -205,49 +216,53 @@ st.markdown("""
         margin-bottom: 25px;
     }
 
-    /* Chat Container for scrolling */
+    /* --- Chat Container for scrolling --- */
     .chat-messages-container {
-        max-height: 400px; /* Fixed height for scrolling chat */
-        overflow-y: auto; /* Enable vertical scrolling */
-        padding-right: 15px; /* Space for scrollbar */
-        padding-top: 10px;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 15px;
         border-radius: 10px;
-        background-color: var(--background-color-tertiary); /* Subtle background for chat area */
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Inner shadow */
+        background-color: var(--background-color-tertiary);
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column; /* Ensure messages stack vertically */
     }
 
-    /* Chat Message Styling (ChatGPT-like) */
+    /* --- Chat Message Styling (ChatGPT-like) --- */
     .chat-message-user, .chat-message-ai {
         padding: 12px 18px;
-        border-radius: 18px; /* More rounded like chat bubbles */
-        margin-bottom: 8px; /* Slightly less margin for denser chat */
-        max-width: 80%; /* Limits bubble width */
+        border-radius: 18px;
+        margin-bottom: 8px;
+        max-width: 80%;
         font-size: 0.95em;
         line-height: 1.5;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08); /* Subtle shadow */
-        word-wrap: break-word; /* Ensure long words break */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        word-wrap: break-word;
+        word-break: break-word; /* Ensure breaking long words */
     }
     .chat-message-user {
-        background-color: var(--primary-color-20); /* Light blue/green for user messages */
+        background-color: var(--primary-color-20); /* Light primary color shade for user */
         color: var(--text-color);
-        margin-left: auto; /* Aligns user messages to the right */
-        border-bottom-right-radius: 4px; /* Sharpen one corner */
+        margin-left: auto;
+        border-bottom-right-radius: 4px;
     }
     .chat-message-ai {
-        background-color: var(--secondary-background-color); /* Streamlit's secondary bg for AI messages */
+        background-color: var(--secondary-background-color); /* Secondary background for AI */
         color: var(--text-color);
-        margin-right: auto; /* Aligns AI messages to the left */
-        border-bottom-left-radius: 4px; /* Sharpen one corner */
+        margin-right: auto;
+        border-bottom-left-radius: 4px;
     }
-    /* Streamlit's native component styling for text area */
-    .stTextArea [data-baseweb="textarea"] textarea {
-        font-family: 'Inter', sans-serif; /* Apply Inter font to text area */
+
+    /* --- Chat Input Styling --- */
+    .stTextInput label {
+        font-weight: 600;
+        color: var(--text-color);
     }
-    /* Style for the chat input text box */
-    .stTextInput {
-        margin-top: 20px; /* Space above chat input */
+    .stTextInput > div > div > input {
+        border-radius: 10px;
+        padding: 10px;
+        background-color: var(--background-color-secondary);
+        color: var(--text-color);
     }
 
     /* --- Sidebar Custom Styling --- */
@@ -266,25 +281,38 @@ st.markdown("""
     }
     .sidebar .stButton > button:hover {
         background-color: rgba(0, 123, 255, 0.1); /* Light blue hover */
-        color: #007bff;
+        color: #0A6EFD; /* Vibrant blue on hover */
     }
     .sidebar .stButton > button.active-page {
-        background-color: #007bff; /* Active page button */
+        background-color: #0A6EFD; /* Active page button */
         color: white;
         font-weight: 600;
         box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
     }
-    .sidebar h2 { /* Styling for sidebar section headers (e.g., "Navigation") */
+    .sidebar h2, .sidebar h3 { /* Styling for sidebar section headers */
         color: var(--text-color-secondary);
-        font-size: 1.3em;
+        font-size: 1.2em;
         margin-top: 25px;
         margin-bottom: 15px;
         border-bottom: 1px solid var(--border-color); /* Subtle separator */
         padding-bottom: 8px;
     }
+    .sidebar p { /* Styling for general text in sidebar */
+        font-size: 0.95em;
+        line-height: 1.4;
+        color: var(--text-color);
+        margin-bottom: 10px;
+    }
+    .sidebar .stAlert { /* Styling for info/warning boxes in sidebar */
+        font-size: 0.9em;
+    }
+    /* Specific styling for the Streamlit sidebar itself */
+    section.main[data-testid="stSidebar"] {
+        background-color: var(--background-color); /* Ensure sidebar background adapts */
+        color: var(--text-color);
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05); /* Optional: subtle shadow for separation */
+    }
 </style>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <div class="main-title-container">
     <h1 class="main-title">TahiriExtractor - Video Ultra Transcription</h1>
@@ -298,24 +326,72 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Sidebar Navigation ---
+# --- Sidebar Content ---
 with st.sidebar:
     st.markdown("<h2>Navigation</h2>", unsafe_allow_html=True)
 
-    page_options = {
-        "Video Extraction": "Video Extraction",
-        "Chat with Content": "Chat with Content",
-        "About TahiriExtractor": "About TahiriExtractor",
-        "Contact Us": "Contact Us"
-    }
+    # Navigation buttons that control the main content area
+    if st.button("Video Extraction", key="sidebar_btn_video_extraction"):
+        st.session_state.main_page_selection = "Video Extraction"
+        st.rerun()
+    if st.button("Chat with Content", key="sidebar_btn_chat_content"):
+        st.session_state.main_page_selection = "Chat with Content"
+        st.rerun()
+    
+    # Apply active class styling to the selected button
+    st.markdown(f"""
+    <script>
+        const currentPage = "{st.session_state.main_page_selection}";
+        const videoBtn = document.querySelector('button[key="sidebar_btn_video_extraction"]');
+        const chatBtn = document.querySelector('button[key="sidebar_btn_chat_content"]');
+        
+        if (videoBtn && currentPage === "Video Extraction") {{
+            videoBtn.classList.add('active-page');
+        }} else if (videoBtn) {{
+            videoBtn.classList.remove('active-page');
+        }}
 
-    for page_name, page_key in page_options.items():
-        if st.button(page_name, key=f"sidebar_button_{page_key}"):
-            st.session_state.page_selection = page_key
-            st.rerun() # Rerun to switch page
+        if (chatBtn && currentPage === "Chat with Content") {{
+            chatBtn.classList.add('active-page');
+        }} else if (chatBtn) {{
+            chatBtn.classList.remove('active-page');
+        }}
+    </script>
+    """, unsafe_allow_html=True)
 
-# --- Main Content Area ---
-if st.session_state.page_selection == "Video Extraction":
+
+    st.markdown("<h3>How to Use TahiriExtractor</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    * **Upload Video:** Start by uploading your video file on the 'Video Extraction' page.
+    * **Generate Summary:** Click 'Generate Content Summary' to initiate AI analysis.
+    * **View & Copy:** The extracted visual text will appear directly below the video.
+    * **Chat:** Switch to 'Chat with Content' to ask questions about the extracted text.
+    """)
+
+    st.markdown("<h3>About TahiriExtractor</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    **TahiriExtractor** is an innovative application leveraging **advanced Artificial Intelligence** to:
+    * Extract deep textual insights from video visual content.
+    * Analyze video frames for a comprehensive, structured summary.
+    * Capture and transcribe any on-screen text, actions, and visual narratives.
+    * **Important Note:** This application does not transcribe audio content (speech-to-text).
+
+    Our mission is to provide an efficient and powerful tool for researchers, content creators, and professionals
+    who need to quickly understand and utilize the visual narrative embedded in video content.
+    """)
+
+    st.markdown("<h3>Contact Us</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    Have questions, feedback, or need support? We'd love to hear from you!
+
+    Please feel free to reach out to our team. We are committed to providing excellent support and continuously improving TahiriExtractor.
+
+    Contact us via email:
+    [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Professional%20Inquiry%20regarding%20TahiriExtractor%20Application&body=Dear%20TahiriExtractor%20Team%2C%0A%0AI%20am%20writing%20to%20you%20from%20the%20TahiriExtractor%20application.%20My%20inquiry%20is%20regarding%3A%20%5Bbriefly%20state%20purpose%5D%0A%0AThank%20you%20for%20your%20time%20and%20assistance.%0A%0ASincerely%2C%0A%5BYour%20Name%5D)
+    """)
+
+# --- Main Content Area (Conditional Rendering) ---
+if st.session_state.main_page_selection == "Video Extraction":
     st.subheader("Extract Visual Content")
     uploaded_file = st.file_uploader(
         "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
@@ -384,7 +460,7 @@ if st.session_state.page_selection == "Video Extraction":
         if os.path.exists(video_path):
             os.unlink(video_path)
 
-elif st.session_state.page_selection == "Chat with Content":
+elif st.session_state.main_page_selection == "Chat with Content":
     st.subheader("Chat with Extracted Content")
     if not st.session_state.extracted_text:
         st.info("Please go to 'Video Extraction' to upload a video and generate content first to enable chat.")
@@ -421,28 +497,4 @@ elif st.session_state.page_selection == "Chat with Content":
                 st.rerun()
             else:
                 st.warning("Please enter a question to chat.")
-
-elif st.session_state.page_selection == "About TahiriExtractor":
-    st.subheader("About TahiriExtractor")
-    st.markdown("""
-    **TahiriExtractor** is an innovative application leveraging **advanced Artificial Intelligence** to:
-    * Extract deep textual insights from video visual content.
-    * Analyze video frames for a comprehensive, structured summary.
-    * Capture and transcribe any on-screen text, actions, and visual narratives.
-    * **Important Note:** This application does not transcribe audio content (speech-to-text).
-
-    Our mission is to provide an efficient and powerful tool for researchers, content creators, and professionals
-    who need to quickly understand and utilize the visual narrative embedded in video content.
-    """)
-
-elif st.session_state.page_selection == "Contact Us":
-    st.subheader("Contact Us")
-    st.markdown("""
-    Have questions, feedback, or need support? We'd love to hear from you!
-
-    Please feel free to reach out to our team. We are committed to providing excellent support and continuously improving TahiriExtractor.
-
-    Contact us via email:
-    [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Professional%20Inquiry%20regarding%20TahiriExtractor%20Application&body=Dear%20TahiriExtractor%20Team%2C%0A%0AI%20am%20writing%20to%20you%20from%20the%20TahiriExtractor%20application.%20My%20inquiry%20is%20regarding%3A%20%5Bbriefly%20state%20purpose%5D%0A%0AThank%20you%20for%20your%20time%20and%20assistance.%0A%0ASincerely%2C%0A%5BYour%20Name%5D)
-    """)
 
