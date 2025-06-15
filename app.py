@@ -22,6 +22,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# --- Initialize Session State for Chat ---
+if 'extracted_text' not in st.session_state:
+    st.session_state.extracted_text = ""
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+
 # --- Helper Function for AI Video Processing ---
 
 def extract_text_with_ai(video_file_path):
@@ -91,6 +97,40 @@ def extract_text_with_ai(video_file_path):
                 st.warning(f"Failed to delete uploaded file from our AI system: {e}. "
                            "Please check your usage or manually clear if possible.")
 
+# --- Helper Function for Chat with Extracted Text ---
+def chat_with_extracted_text(user_query):
+    # Specific response for identity questions
+    identity_keywords = ["who are you", "who developed you", "what technology", "who made you", "your developer", "your creator"]
+    if any(keyword in user_query.lower() for keyword in identity_keywords):
+        return "TahiriExtractor AI-chat assistance, developed by TahiriExtractor team, use LLMs technology."
+
+    if not st.session_state.extracted_text:
+        return "Please extract video content first to enable chat functionality."
+
+    # Construct chat history for the model, focusing on the extracted text as context
+    chat_model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    # Initialize chat history with a system prompt and the extracted text as initial context
+    # This ensures the model always has the extracted text as the primary context
+    messages = [
+        {"role": "user", "parts": [
+            "You are TahiriExtractor AI-chat assistance. Your sole purpose is to answer questions strictly based on the provided video content summary. Do not answer questions outside of this context. If a user asks about your identity, development, or technology, respond with: 'TahiriExtractor AI-chat assistance, developed by TahiriExtractor team, use LLMs technology.' Do not deviate from this specific response for such queries."
+            f"Here is the video content summary: {st.session_state.extracted_text}"
+        ]}
+    ]
+
+    # Add the user's current query
+    messages.append({"role": "user", "parts": [user_query]})
+
+    try:
+        response = chat_model.generate_content(messages)
+        if response and hasattr(response, 'text'):
+            return response.text
+        else:
+            return "Could not generate a response based on the provided text."
+    except Exception as e:
+        return f"An error occurred during chat: {e}"
+
 # --- Streamlit UI Layout ---
 
 with st.sidebar:
@@ -119,7 +159,7 @@ with st.sidebar:
     [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Inquiry%20from%20TahiriExtractor%20App&body=Hello%20TahiriExtractor%20Team%2C%0A%0AI%20am%20contacting%20you%20regarding%20...)
     """)
 
-# Main title with professional styling
+# Main title with professional styling (removed film icon)
 st.markdown("""
 <style>
     .main-title-container {
@@ -178,10 +218,33 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
         margin-bottom: 25px;
     }
+    .chat-container {
+        background-color: #f0f2f6;
+        padding: 20px;
+        border-radius: 15px;
+        margin-top: 30px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .chat-message-user {
+        background-color: #e0f7fa; /* Light cyan for user messages */
+        padding: 10px 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        text-align: left;
+        align-self: flex-end;
+    }
+    .chat-message-ai {
+        background-color: #e6e6fa; /* Light lavender for AI messages */
+        padding: 10px 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        text-align: left;
+        align-self: flex-start;
+    }
 </style>
 
 <div class="main-title-container">
-    <h1 class="main-title">🎥 TahiriExtractor - Video Ultra Transcription</h1>
+    <h1 class="main-title">TahiriExtractor - Video Ultra Transcription</h1>
     <p class="main-subtitle">
         Your ultimate AI-powered tool for extracting comprehensive visual information and on-screen text from videos.
     </p>
@@ -211,12 +274,13 @@ if uploaded_file is not None:
     if st.button("Generate Content Summary", type="primary", use_container_width=True):
         with st.spinner("Analyzing video visual content with our AI... This may take a moment based on video length and complexity."):
             extracted_text = extract_text_with_ai(video_path)
+            st.session_state.extracted_text = extracted_text # Store extracted text in session state
+            st.session_state.chat_history = [] # Reset chat history when new text is extracted
 
         with transcript_display_area.container():
             st.markdown("---")
-            st.subheader("Extracted Visual Content (Visual 'Transcription')")
             
-            # Display the extracted text in a non-editable, formatted way (like a chatbot response)
+            # Display the extracted text directly without an introduction/subheader
             st.markdown(
                 f"""
                 <div class="extracted-text-output">
@@ -254,6 +318,32 @@ if uploaded_file is not None:
                 help="Download the extracted visual content summary as a Microsoft Word document for offline use."
             )
     
+    # --- Chat with Extracted Text Section ---
+    if st.session_state.extracted_text: # Only show chat if text has been extracted
+        st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+        st.subheader("Chat with the Extracted Content")
+        st.write("Ask questions about the video content that was just extracted.")
+
+        # Display chat history
+        for message in st.session_state.chat_history:
+            if message['role'] == 'user':
+                st.markdown(f"<div class='chat-message-user'><b>You:</b> {message['content']}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='chat-message-ai'><b>TahiriExtractor AI:</b> {message['content']}</div>", unsafe_allow_html=True)
+
+        user_chat_query = st.text_input("Your question about the content:", key="chat_input")
+
+        if st.button("Ask TahiriExtractor AI", type="secondary"):
+            if user_chat_query:
+                st.session_state.chat_history.append({"role": "user", "content": user_chat_query})
+                with st.spinner("TahiriExtractor AI is thinking..."):
+                    ai_response = chat_with_extracted_text(user_chat_query)
+                    st.session_state.chat_history.append({"role": "ai", "content": ai_response})
+                st.experimental_rerun() # Rerun to display new chat messages
+            else:
+                st.warning("Please enter a question to chat.")
+        st.markdown("</div>", unsafe_allow_html=True) # Close chat container
+
     # Ensure temporary file is cleaned up after use
     if os.path.exists(video_path):
         os.unlink(video_path)
