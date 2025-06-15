@@ -114,7 +114,7 @@ def chat_with_extracted_text(user_query):
     # This ensures the model always has the extracted text as the primary context
     messages = [
         {"role": "user", "parts": [
-            "You are TahiriExtractor AI-chat assistance. Your sole purpose is to answer questions strictly based on the provided video content summary. Do not answer questions outside of this context. If a user asks about your identity, development, or technology, respond with: 'TahiriExtractor AI-chat assistance, developed by TahiriExtractor team, use LLMs technology.' Do not deviate from this specific response for such queries."
+            "You are TahiriExtractor AI-chat assistance. Your sole purpose is to answer questions strictly based on the provided video content summary. Provide professional, deep, and concise answers, focusing solely on analysis of the text. Do not answer questions outside of this context. If a user asks about your identity, development, or technology, respond with: 'TahiriExtractor AI-chat assistance, developed by TahiriExtractor team, use LLMs technology.' Do not deviate from this specific response for such queries."
             f"Here is the video content summary: {st.session_state.extracted_text}"
         ]}
     ]
@@ -159,34 +159,41 @@ with st.sidebar:
     [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Inquiry%20from%20TahiriExtractor%20App&body=Hello%20TahiriExtractor%20Team%2C%0A%0AI%20am%20contacting%20you%20regarding%20...)
     """)
 
-# Main title with professional styling (removed film icon)
+# Main title with professional styling
 st.markdown("""
 <style>
+    /* General body styling for theme compatibility */
+    body {
+        color: var(--text-color); /* Streamlit's default text color */
+        background-color: var(--background-color); /* Streamlit's default background color */
+    }
+
+    /* Main Title Container */
     .main-title-container {
         padding: 30px 0;
-        background: linear-gradient(135deg, #e6faff 0%, #d0f4ff 100%);
+        background: var(--background-color-secondary); /* Adapts to Streamlit theme */
         border-radius: 15px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow, generally fine for both themes */
         text-align: center;
     }
     .main-title {
-        color: #007bff; /* A professional blue */
+        color: #007bff; /* A vibrant professional blue, chosen for readability on both light/dark container backgrounds */
         font-size: 2.8em;
         font-weight: 700;
         letter-spacing: 1px;
         margin-bottom: 10px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05); /* Very subtle, lightens on dark */
     }
     .main-subtitle {
-        color: #555;
+        color: var(--text-color-secondary); /* Adapts to Streamlit theme */
         font-size: 1.2em;
         max-width: 800px;
         margin: 0 auto;
         line-height: 1.6;
     }
     .info-box {
-        background-color: #f9f9f9;
+        background-color: var(--background-color-tertiary); /* Adapts to Streamlit theme */
         padding: 20px;
         border-radius: 10px;
         text-align: center;
@@ -195,53 +202,79 @@ st.markdown("""
     }
     .info-box p {
         font-size: 1.05em;
-        color: #444;
+        color: var(--text-color); /* Adapts to Streamlit theme */
     }
     .info-box strong {
-        color: #007bff;
+        color: #007bff; /* Consistent blue emphasis */
     }
+
+    /* Extracted Text Output Styling */
     .extracted-text-output {
-        background-color: #f0f8ff; /* Light blue background for chat-like output */
+        background-color: var(--background-color-secondary); /* Adapts to Streamlit theme */
         padding: 20px;
         border-radius: 12px;
         border-left: 6px solid #007bff; /* Stronger blue border */
         margin-bottom: 25px;
         overflow-wrap: break-word;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Inter', sans-serif; /* Specified font */
         line-height: 1.6;
-        color: #333;
+        color: var(--text-color); /* Adapts to Streamlit theme */
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    
+    /* Video Player Styling */
     .stVideo {
-        border-radius: 12px; /* Rounded corners for the video player */
-        overflow: hidden; /* Ensures corners are rounded */
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         margin-bottom: 25px;
     }
+
+    /* Chat Container */
     .chat-container {
-        background-color: #f0f2f6;
+        background-color: var(--background-color-secondary); /* Adapts to Streamlit theme */
         padding: 20px;
         border-radius: 15px;
         margin-top: 30px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
+    /* Chat Message Styling (ChatGPT-like) */
     .chat-message-user {
-        background-color: #e0f7fa; /* Light cyan for user messages */
-        padding: 10px 15px;
-        border-radius: 10px;
+        background-color: var(--primary-color-20); /* Lighter shade of primary color */
+        color: var(--text-color);
+        padding: 12px 18px;
+        border-radius: 18px;
         margin-bottom: 10px;
         text-align: left;
         align-self: flex-end;
+        max-width: 80%; /* Limits bubble width */
+        margin-left: auto; /* Aligns to right */
     }
     .chat-message-ai {
-        background-color: #e6e6fa; /* Light lavender for AI messages */
-        padding: 10px 15px;
-        border-radius: 10px;
+        background-color: var(--secondary-background-color); /* Streamlit's secondary bg or a slightly darker shade */
+        color: var(--text-color);
+        padding: 12px 18px;
+        border-radius: 18px;
         margin-bottom: 10px;
         text-align: left;
         align-self: flex-start;
+        max-width: 80%; /* Limits bubble width */
+        margin-right: auto; /* Aligns to left */
+    }
+    /* Streamlit's native component styling for text area */
+    .stTextArea [data-baseweb="textarea"] textarea {
+        font-family: 'Inter', sans-serif; /* Apply Inter font to text area */
+    }
+    /* Custom styling for the direct copy icon within text area, Streamlit handles the icon itself */
+    .stTextArea [data-baseweb="textarea"] .st-bd { /* Target the container for the copy button */
+        position: relative;
+    }
+    .stTextArea [data-baseweb="textarea"] .st-bd button { /* Target the copy button itself */
+        /* Streamlit's default copy button works well, no need for custom icon */
     }
 </style>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <div class="main-title-container">
     <h1 class="main-title">TahiriExtractor - Video Ultra Transcription</h1>
@@ -296,7 +329,7 @@ if uploaded_file is not None:
                 value=extracted_text,
                 height=300,
                 key="copy_summary_area",
-                help="You can easily copy the entire summary from this text box using the built-in copy button."
+                help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
             )
 
             # Create and download Word document
@@ -339,7 +372,7 @@ if uploaded_file is not None:
                 with st.spinner("TahiriExtractor AI is thinking..."):
                     ai_response = chat_with_extracted_text(user_chat_query)
                     st.session_state.chat_history.append({"role": "ai", "content": ai_response})
-                st.rerun() # Changed from st.experimental_rerun() to st.rerun()
+                st.rerun()
             else:
                 st.warning("Please enter a question to chat.")
         st.markdown("</div>", unsafe_allow_html=True) # Close chat container
