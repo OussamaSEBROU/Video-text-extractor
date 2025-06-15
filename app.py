@@ -194,9 +194,18 @@ st.markdown("""
         color: #0A6EFD;
     }
 
+    /* --- Main Content Wrapper (new for the "white surrounding") --- */
+    .main-content-wrapper {
+        background-color: var(--background-color-secondary); /* This will be light gray/dark gray */
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+        margin-bottom: 30px;
+    }
+
     /* --- Extracted Text Output Styling --- */
     .extracted-text-output {
-        background-color: var(--background-color-secondary);
+        background-color: var(--background-color-tertiary); /* Slightly different from wrapper for contrast */
         padding: 20px;
         border-radius: 12px;
         border-left: 6px solid #0A6EFD;
@@ -225,7 +234,7 @@ st.markdown("""
         background-color: var(--background-color-tertiary);
         box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
         display: flex;
-        flex-direction: column; /* Ensure messages stack vertically */
+        flex-direction: column;
     }
 
     /* --- Chat Message Styling (ChatGPT-like) --- */
@@ -238,16 +247,16 @@ st.markdown("""
         line-height: 1.5;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         word-wrap: break-word;
-        word-break: break-word; /* Ensure breaking long words */
+        word-break: break-word;
     }
     .chat-message-user {
-        background-color: var(--primary-color-20); /* Light primary color shade for user */
+        background-color: var(--primary-color-20);
         color: var(--text-color);
         margin-left: auto;
         border-bottom-right-radius: 4px;
     }
     .chat-message-ai {
-        background-color: var(--secondary-background-color); /* Secondary background for AI */
+        background-color: var(--secondary-background-color);
         color: var(--text-color);
         margin-right: auto;
         border-bottom-left-radius: 4px;
@@ -266,6 +275,13 @@ st.markdown("""
     }
 
     /* --- Sidebar Custom Styling --- */
+    /* Make the entire sidebar background gray and theme-compatible */
+    section.main[data-testid="stSidebar"] > div:first-child {
+        background-color: var(--background-color-secondary); /* Grayer background */
+        color: var(--text-color);
+        padding-top: 20px; /* Add some padding at the top */
+    }
+
     .sidebar .stButton > button {
         width: 100%;
         text-align: left;
@@ -290,29 +306,31 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
     }
     .sidebar h2, .sidebar h3 { /* Styling for sidebar section headers */
-        color: var(--text-color-secondary);
-        font-size: 1.2em;
+        color: var(--text-color); /* Ensure headers are readable on new gray bg */
+        font-size: 1.25em; /* Slightly larger */
         margin-top: 25px;
-        margin-bottom: 15px;
+        margin-bottom: 10px; /* Reduced margin */
         border-bottom: 1px solid var(--border-color); /* Subtle separator */
         padding-bottom: 8px;
+        padding-left: 15px; /* Indent headers slightly */
+        padding-right: 15px;
     }
     .sidebar p { /* Styling for general text in sidebar */
         font-size: 0.95em;
         line-height: 1.4;
         color: var(--text-color);
         margin-bottom: 10px;
+        padding-left: 15px; /* Indent text slightly */
+        padding-right: 15px;
     }
     .sidebar .stAlert { /* Styling for info/warning boxes in sidebar */
         font-size: 0.9em;
-    }
-    /* Specific styling for the Streamlit sidebar itself */
-    section.main[data-testid="stSidebar"] {
-        background-color: var(--background-color); /* Ensure sidebar background adapts */
-        color: var(--text-color);
-        box-shadow: 2px 0 5px rgba(0,0,0,0.05); /* Optional: subtle shadow for separation */
+        padding-left: 15px; /* Maintain padding */
+        padding-right: 15px;
     }
 </style>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <div class="main-title-container">
     <h1 class="main-title">TahiriExtractor - Video Ultra Transcription</h1>
@@ -391,6 +409,9 @@ with st.sidebar:
     """)
 
 # --- Main Content Area (Conditional Rendering) ---
+# New wrapper for the main content to give it a distinct "white/light" background
+st.markdown("<div class='main-content-wrapper'>", unsafe_allow_html=True)
+
 if st.session_state.main_page_selection == "Video Extraction":
     st.subheader("Extract Visual Content")
     uploaded_file = st.file_uploader(
@@ -497,4 +518,8 @@ elif st.session_state.main_page_selection == "Chat with Content":
                 st.rerun()
             else:
                 st.warning("Please enter a question to chat.")
+
+# Ensure the main content wrapper is closed
+st.markdown("</div>", unsafe_allow_html=True)
+
 
