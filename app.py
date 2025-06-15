@@ -133,7 +133,7 @@ def chat_with_extracted_text(user_query):
     except Exception as e:
         return f"An error occurred during chat: {e}"
 
-# --- Custom CSS for Theming and Chat Styling ---
+# --- Custom CSS for Theming and Styling ---
 st.markdown("""
 <style>
     /* General body styling for theme compatibility */
@@ -241,15 +241,46 @@ st.markdown("""
         margin-right: auto; /* Aligns AI messages to the left */
         border-bottom-left-radius: 4px; /* Sharpen one corner */
     }
-    .stTextInput label { /* Style for chat input label */
-        font-weight: 600;
-        color: var(--text-color);
+    /* Streamlit's native component styling for text area */
+    .stTextArea [data-baseweb="textarea"] textarea {
+        font-family: 'Inter', sans-serif; /* Apply Inter font to text area */
     }
-    .stTextInput > div > div > input { /* Style for chat input field */
-        border-radius: 10px;
-        padding: 10px;
-        background-color: var(--background-color-secondary);
+    /* Style for the chat input text box */
+    .stTextInput {
+        margin-top: 20px; /* Space above chat input */
+    }
+
+    /* --- Sidebar Custom Styling --- */
+    .sidebar .stButton > button {
+        width: 100%;
+        text-align: left;
+        padding: 10px 15px;
+        border: none;
+        background-color: transparent;
         color: var(--text-color);
+        font-size: 1.1em;
+        font-weight: 500;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .sidebar .stButton > button:hover {
+        background-color: rgba(0, 123, 255, 0.1); /* Light blue hover */
+        color: #007bff;
+    }
+    .sidebar .stButton > button.active-page {
+        background-color: #007bff; /* Active page button */
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+    }
+    .sidebar h2 { /* Styling for sidebar section headers (e.g., "Navigation") */
+        color: var(--text-color-secondary);
+        font-size: 1.3em;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid var(--border-color); /* Subtle separator */
+        padding-bottom: 8px;
     }
 </style>
 
@@ -268,14 +299,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Sidebar Navigation ---
-st.sidebar.header("Navigation")
-page_selection = st.sidebar.radio(
-    "Go to",
-    ("Video Extraction", "Chat with Content", "About TahiriExtractor", "Contact Us"),
-    key="page_selector"
-)
-st.session_state.page_selection = page_selection
+with st.sidebar:
+    st.markdown("<h2>Navigation</h2>", unsafe_allow_html=True)
 
+    page_options = {
+        "Video Extraction": "Video Extraction",
+        "Chat with Content": "Chat with Content",
+        "About TahiriExtractor": "About TahiriExtractor",
+        "Contact Us": "Contact Us"
+    }
+
+    for page_name, page_key in page_options.items():
+        if st.button(page_name, key=f"sidebar_button_{page_key}"):
+            st.session_state.page_selection = page_key
+            st.rerun() # Rerun to switch page
 
 # --- Main Content Area ---
 if st.session_state.page_selection == "Video Extraction":
