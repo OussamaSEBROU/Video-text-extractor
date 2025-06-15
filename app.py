@@ -119,23 +119,77 @@ with st.sidebar:
     [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Inquiry%20from%20TahiriExtractor%20App&body=Hello%20TahiriExtractor%20Team%2C%0A%0AI%20am%20contacting%20you%20regarding%20...)
     """)
 
-# Main title with blue color
-st.markdown("<h1 style='color: #1E90FF; text-align: center;'>🎥 TahiriExtractor - Video Ultra Transcription</h1>", unsafe_allow_html=True) # Updated title with blue color and centered
-
+# Main title with professional styling
 st.markdown("""
-<div style='background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;'>
-    <p style='font-size: 1.1em; color: #333;'>
-        Welcome to <strong>TahiriExtractor</strong>, your ultimate tool for extracting comprehensive visual information from videos.
-        This application harnesses the power of <strong>advanced Artificial Intelligence</strong> to analyze your video content,
-        identifying and transcribing on-screen text, objects, and actions to provide a detailed, readable summary.
-        Perfect for researchers, content creators, and anyone needing to quickly grasp the visual narrative of a video.
+<style>
+    .main-title-container {
+        padding: 30px 0;
+        background: linear-gradient(135deg, #e6faff 0%, #d0f4ff 100%);
+        border-radius: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .main-title {
+        color: #007bff; /* A professional blue */
+        font-size: 2.8em;
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+    }
+    .main-subtitle {
+        color: #555;
+        font-size: 1.2em;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+    .info-box {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-top: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .info-box p {
+        font-size: 1.05em;
+        color: #444;
+    }
+    .info-box strong {
+        color: #007bff;
+    }
+    .extracted-text-output {
+        background-color: #f0f8ff; /* Light blue background for chat-like output */
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 6px solid #007bff; /* Stronger blue border */
+        margin-bottom: 25px;
+        overflow-wrap: break-word;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .stVideo {
+        border-radius: 12px; /* Rounded corners for the video player */
+        overflow: hidden; /* Ensures corners are rounded */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+        margin-bottom: 25px;
+    }
+</style>
+
+<div class="main-title-container">
+    <h1 class="main-title">🎥 TahiriExtractor - Video Ultra Transcription</h1>
+    <p class="main-subtitle">
+        Your ultimate AI-powered tool for extracting comprehensive visual information and on-screen text from videos.
     </p>
-    <p style='font-size: 1em; color: #555;'>
-        <strong>Key Point:</strong> We support videos up to <strong>15 minutes</strong> in duration for efficient analysis.
-        Our system focuses on visual analysis and does not perform audio-to-text transcription.
-    </p>
+    <div class="info-box">
+        <p>Harnessing <strong>advanced Artificial Intelligence</strong> to deliver detailed, readable summaries.</p>
+        <p><strong>Key Point:</strong> Supports videos up to <strong>15 minutes</strong> in duration for efficient analysis. Focuses on visual content; does not transcribe audio.</p>
+    </div>
 </div>
-<br>
 """, unsafe_allow_html=True) # Professional, concise introduction
 
 uploaded_file = st.file_uploader(
@@ -165,7 +219,7 @@ if uploaded_file is not None:
             # Display the extracted text in a non-editable, formatted way (like a chatbot response)
             st.markdown(
                 f"""
-                <div style='background-color: #e6f7ff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E90FF; margin-bottom: 15px; overflow-wrap: break-word;'>
+                <div class="extracted-text-output">
                     {extracted_text}
                 </div>
                 """,
