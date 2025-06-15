@@ -11,14 +11,13 @@ import time # For time.sleep during AI file processing
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    st.error("AI service key not found. Please set the 'GEMINI_API_KEY' environment variable. "
-             "If deploying, ensure it's configured in your environment settings.")
+    st.error("AI service key not found. Please set the 'GEMINI_API_KEY' environment variable.")
     st.stop()
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(
-    page_title="TahiriExtractor - video ultra transcription", # Updated app name
+    page_title="TahiriExtractor - Video Ultra Transcription",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -38,7 +37,7 @@ def extract_text_with_ai(video_file_path):
     appearing in frames, structured to resemble a continuous narrative or report.
     For true spoken word transcription, a dedicated ASR service is required.
     """
-    st.info("Initiating video analysis with our powerful AI for visual content extraction. "
+    st.info("Initiating video analysis with our AI for visual content extraction. "
             "Please note: This process focuses on what is *visually observable* in the video, "
             "including any on-screen text, and infers narrative from visual cues. "
             "It does NOT perform audio-to-text transcription.")
@@ -96,53 +95,48 @@ def extract_text_with_ai(video_file_path):
 
 with st.sidebar:
     st.header("How to Use TahiriExtractor")
-    st.info("""
-    1.  **Upload your video file** using the "Upload a video file" button on the main page.
-        (Videos up to **15 minutes** in duration are supported for comprehensive analysis.)
-    2.  Once uploaded, click the **"Generate Content Summary"** button.
-    3.  Our advanced AI system will then analyze your video's **visual content**.
-    4.  The extracted descriptive text (a visual 'transcription') will be displayed in the main area.
-        You can then easily copy it directly or download it as a Microsoft Word (.docx) document.
-    """)
-
-    st.header("About TahiriExtractor") # Updated heading
     st.markdown("""
-    **TahiriExtractor** is an innovative application designed to provide in-depth textual insights
-    from your video content. By leveraging cutting-edge **Artificial Intelligence technology**,
-    it analyzes video frames to deliver a comprehensive and structured summary of
-    **all visually observable information**, including on-screen text, actions, and visual narratives.
-
-    ---
-
-    **Important Clarification: Visual vs. Audio Transcription**
-
-    It is crucial to understand that TahiriExtractor performs **visual content extraction and on-screen text transcription only.**
-
-    * **✅ What it DOES:** Provides a highly detailed description of everything visible in the video frames. It will accurately capture and output any text that appears on screen (like captions, titles, or presentation slides). It will describe visual cues that might suggest dialogue (e.g., "A person is seen speaking to another").
-    * **❌ What it DOES NOT do:** It **does NOT "listen" to the audio track** of your video. Therefore, it cannot transcribe spoken words, distinguish between multiple speakers based on their voices, or generate a verbatim transcript of a conversation. For that, a dedicated **Automatic Speech Recognition (ASR)** service is required, which is a different technology.
-
-    The output you receive will be a "visual transcription" – a detailed, paragraph-ordered report of the video's visual content.
+    * **Step 1:** Upload your video file using the "Upload a video file" button on the main page.
+    * **Step 2:** Click the "Generate Content Summary" button.
+    * **Step 3:** Our AI-powered system will analyze the visual content of your video.
+    * **Step 4:** The extracted descriptive text (visual 'transcription') will be displayed in the main area, with options to copy or download as a Word file.
     """)
 
-    st.header("Contact Us") # New section for contact
+    st.header("About TahiriExtractor")
+    st.markdown("""
+    **TahiriExtractor** is an innovative application leveraging **advanced Artificial Intelligence** to:
+    * Extract deep textual insights from video visual content.
+    * Analyze video frames for a comprehensive, structured summary.
+    * Capture and transcribe any on-screen text, actions, and visual narratives.
+    * **Important Note:** This application does not transcribe audio content (speech-to-text).
+    """)
+
+    st.header("Contact Us")
     st.markdown("""
     Have questions, feedback, or need support? We'd love to hear from you!
 
-    Reach out to us:
+    Contact us via email:
     [TahiriExtractor.veo.net](mailto:oussama.sebrou@gmail.com?subject=Inquiry%20from%20TahiriExtractor%20App&body=Hello%20TahiriExtractor%20Team%2C%0A%0AI%20am%20contacting%20you%20regarding%20...)
     """)
 
+# Main title with blue color
+st.markdown("<h1 style='color: #1E90FF; text-align: center;'>🎥 TahiriExtractor - Video Ultra Transcription</h1>", unsafe_allow_html=True) # Updated title with blue color and centered
 
-st.title("🎥 TahiriExtractor - Video Ultra Transcription") # Updated main title
-st.write("""
-Welcome to **TahiriExtractor**, your ultimate tool for extracting comprehensive visual information from videos.
-This application harnesses the power of **advanced Artificial Intelligence** to analyze your video content,
-identifying and transcribing on-screen text, objects, and actions to provide a detailed, readable summary.
-Perfect for researchers, content creators, and anyone needing to quickly grasp the visual narrative of a video.
-
-**Please note:** For optimal performance, we support video uploads up to **15 minutes** in duration.
-Our system focuses on *visual analysis* and does not perform audio-to-text transcription.
-""")
+st.markdown("""
+<div style='background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;'>
+    <p style='font-size: 1.1em; color: #333;'>
+        Welcome to <strong>TahiriExtractor</strong>, your ultimate tool for extracting comprehensive visual information from videos.
+        This application harnesses the power of <strong>advanced Artificial Intelligence</strong> to analyze your video content,
+        identifying and transcribing on-screen text, objects, and actions to provide a detailed, readable summary.
+        Perfect for researchers, content creators, and anyone needing to quickly grasp the visual narrative of a video.
+    </p>
+    <p style='font-size: 1em; color: #555;'>
+        <strong>Key Point:</strong> We support videos up to <strong>15 minutes</strong> in duration for efficient analysis.
+        Our system focuses on visual analysis and does not perform audio-to-text transcription.
+    </p>
+</div>
+<br>
+""", unsafe_allow_html=True) # Professional, concise introduction
 
 uploaded_file = st.file_uploader(
     "Upload a video file (MP4, MOV, MKV, AVI, WEBM, etc.)",
@@ -162,15 +156,23 @@ if uploaded_file is not None:
 
     if st.button("Generate Content Summary", type="primary", use_container_width=True):
         with st.spinner("Analyzing video visual content with our AI... This may take a moment based on video length and complexity."):
-            extracted_text = extract_text_with_ai(video_path) # Changed function name
+            extracted_text = extract_text_with_ai(video_path)
 
         with transcript_display_area.container():
             st.markdown("---")
             st.subheader("Extracted Visual Content (Visual 'Transcription')")
             
-            # Display the extracted text in a non-editable, formatted way first
-            st.markdown(extracted_text)
+            # Display the extracted text in a non-editable, formatted way (like a chatbot response)
+            st.markdown(
+                f"""
+                <div style='background-color: #e6f7ff; padding: 15px; border-radius: 10px; border-left: 5px solid #1E90FF; margin-bottom: 15px; overflow-wrap: break-word;'>
+                    {extracted_text}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
+            # Copyable text area (with built-in copy icon)
             st.text_area(
                 "Copyable Visual Content Summary",
                 value=extracted_text,
@@ -182,9 +184,7 @@ if uploaded_file is not None:
             # Create and download Word document
             doc = Document()
             doc.add_heading('Video Visual Content Summary', level=1)
-            # Split by double newline to preserve paragraphs from AI's output
             for paragraph_text in extracted_text.split('\n\n'):
-                # Add text to the document, ensuring empty paragraphs are skipped
                 if paragraph_text.strip():
                     doc.add_paragraph(paragraph_text.strip())
 
