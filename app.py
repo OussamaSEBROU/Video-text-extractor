@@ -71,6 +71,7 @@ def extract_text_with_ai(video_file_path):
         # --- Refined Prompt for Direct Content Extraction (UNMODIFIED AS PER INSTRUCTION) ---
         prompt = (
             "You are a highly precise content extraction AI. Your task is to extract the text from the video without change anything thing in the content"
+" never ever add an introduction before the extracted text in outputs, put just the extracted text exactly" 
 " the language of extracted text should be same of the video .. be carefuly on that"
 
             "Present the extracted content in clean, well-formatted paragraphs, ordering events chronologically as they appear in the video. "
