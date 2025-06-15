@@ -339,7 +339,7 @@ if uploaded_file is not None:
                 with st.spinner("TahiriExtractor AI is thinking..."):
                     ai_response = chat_with_extracted_text(user_chat_query)
                     st.session_state.chat_history.append({"role": "ai", "content": ai_response})
-                st.experimental_rerun() # Rerun to display new chat messages
+                st.rerun() # Changed from st.experimental_rerun() to st.rerun()
             else:
                 st.warning("Please enter a question to chat.")
         st.markdown("</div>", unsafe_allow_html=True) # Close chat container
