@@ -536,19 +536,19 @@ elif st.session_state.main_page_selection == "Chat with Content":
                 st.warning("Please enter a question to chat.")
         
         # New feature: Copy Chat History
-        if st.session_state.chat_history:
-            # Format chat history for copying
-            formatted_chat_history = ""
-            for msg in st.session_state.chat_history:
-                formatted_chat_history += f"{msg['role'].capitalize()}: {msg['content']}\n"
+      #  if st.session_state.chat_history:
+         #   # Format chat history for copying
+        #    formatted_chat_history = ""
+      #      for msg in #st.session_state.chat_history:
+          #      formatted_chat_history += #f"{msg['role'].capitalize()}: #{msg['content']}\n"
             
-            st.text_area(
-                "Copy Entire Chat History",
-                value=formatted_chat_history.strip(), # .strip() removes trailing newline
-                height=150,
-                key="copy_chat_history_area",
-                help="Copy the full conversation history from this box using the built-in clipboard icon."
-            )
+          #  st.text_area(
+      #          "Copy Entire Chat History",
+                #value=formatted_chat_history.strip(), # .strip() removes trailing newline
+        #        height=150,
+       #         key="copy_chat_history_area",
+        #        help="Copy the full #conversation history from this box using the #built-in clipboard icon."
+      #      )
 
 
 # Ensure the main content wrapper is closed
