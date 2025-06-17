@@ -466,7 +466,7 @@ if st.session_state.main_page_selection == "Video Extraction":
 
                 # Copyable text area (with built-in copy icon)
                 #st.text_area(
-                    "Copyable Visual Content Summary",
+                    #"Copyable Visual Content Summary",
                    # value=extracted_text,
                   #  height=300,
                 #    key="copy_summary_area",
