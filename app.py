@@ -523,7 +523,7 @@ elif st.session_state.main_page_selection == "Chat with Content":
         """, unsafe_allow_html=True)
 
         # Replaced st.text_input with st.text_area for elastic input
-        user_chat_query = st.text_area("Your question about the content:", key="chat_input", height=50) # Added initial height
+        user_chat_query = st.text_area("Your question about the content:", key="chat_input", height=68) # Added initial height
 
         if st.button("Ask TahiriExtractor AI", type="secondary"):
             if user_chat_query:
