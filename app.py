@@ -471,7 +471,7 @@ if st.session_state.main_page_selection == "Video Extraction":
                   #  height=300,
                 #    key="copy_summary_area",
                  #   help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
-                )
+                #)
 
                 # Create and download Word document
                 doc = Document()
