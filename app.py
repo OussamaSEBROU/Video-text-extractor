@@ -465,12 +465,12 @@ if st.session_state.main_page_selection == "Video Extraction":
                 )
 
                 # Copyable text area (with built-in copy icon)
-                st.text_area(
+                #st.text_area(
                     "Copyable Visual Content Summary",
-                    value=extracted_text,
-                    height=300,
-                    key="copy_summary_area",
-                    help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
+                   # value=extracted_text,
+                  #  height=300,
+                #    key="copy_summary_area",
+                 #   help="You can easily copy the entire summary from this text box using the built-in clipboard icon (top-right of this text area)."
                 )
 
                 # Create and download Word document
